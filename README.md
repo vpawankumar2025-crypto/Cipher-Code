@@ -120,3 +120,13 @@ new emails through the full pipeline, saving cases to the database.
 - PostgreSQL not installed in the dev sandbox — SQLAlchemy makes this a one-line env var swap, verified against SQLite
 - GeoIP uses the free ip-api.com service (needs internet); MaxMind GeoLite2 (as named in the deck) is a drop-in swap in `geoip_lookup.py` for offline/production use
 - No automated test suite yet — all testing here was manual end-to-end verification via curl against the live API
+
+## How to Run
+
+```bash
+pip install -r requirements.txt
+python3 train_model.py
+uvicorn backend:app --reload --port 8000
+```
+
+Then open `dashboard.html` in your browser.
