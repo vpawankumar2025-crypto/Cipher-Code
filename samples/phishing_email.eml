@@ -1,0 +1,27 @@
+Delivered-To: user@example.com
+Received: from unknown (unknown [45.227.253.109])
+        by mx.example.com with ESMTP id xyz789
+        for <user@example.com>; Fri, 05 Sep 2026 03:22:00 +0000
+Authentication-Results: mx.example.com;
+       spf=fail smtp.mailfrom=security@paypa1-alerts.com;
+       dkim=fail;
+       dmarc=fail header.from=paypal.com
+From: "PayPal Security Team" <security@paypa1-alerts.com>
+Reply-To: recover-account@totally-not-phishing.ru
+To: user@example.com
+Subject: URGENT: Your account will be suspended - verify now
+Date: Fri, 05 Sep 2026 03:22:00 +0000
+Message-ID: <fake456@paypa1-alerts.com>
+Content-Type: text/plain; charset="UTF-8"
+
+Dear Customer,
+
+We have detected unusual activity on your account. Your account will be closed
+within 24 hours unless you verify your account immediately.
+
+Click here to confirm your password and bank details:
+http://bit.ly/paypal-verify-now
+
+Failure to act now will result in permanent suspension.
+
+PayPal Security Team
