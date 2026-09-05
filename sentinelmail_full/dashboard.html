@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>SentinelMail AI — Analyst Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: #0f1419;
+    color: #e6e6e6;
+  }
+  .header {
+    background: linear-gradient(135deg, #1a2332, #0f1419);
+    padding: 20px 32px;
+    border-bottom: 1px solid #2a3441;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .header h1 { margin: 0; font-size: 22px; }
+  .header .tag { color: #8899a6; font-size: 13px; }
+  .stats-row {
+    display: flex;
+    gap: 16px;
+    padding: 20px 32px;
+    flex-wrap: wrap;
+  }
+  .stat-card {
+    background: #1a2332;
+    border: 1px solid #2a3441;
+    border-radius: 10px;
+    padding: 16px 20px;
+    min-width: 140px;
+    flex: 1;
+  }
+  .stat-card .num { font-size: 28px; font-weight: 700; }
+  .stat-card .label { font-size: 12px; color: #8899a6; margin-top: 4px; }
+  .safe { color: #4caf50; }
+  .suspicious { color: #ff9800; }
+  .malicious { color: #f44336; }
+  .main {
+    display: flex;
+    gap: 20px;
+    padding: 0 32px 32px;
+  }
+  .cases-panel { flex: 1.2; }
+  .detail-panel { flex: 1; }
+  .upload-box {
+    background: #1a2332;
+    border: 1px dashed #3a4a5c;
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 20px;
+    text-align: center;
+  }
+  .upload-box input { color: #e6e6e6; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { text-align: left; padding: 10px 8px; font-size: 13px; border-bottom: 1px solid #2a3441; }
+  th { color: #8899a6; font-weight: 500; }
+  tr:hover { background: #1a2332; cursor: pointer; }
+  .badge {
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+  }
+  .badge.Safe { background: #1b3a1e; color: #4caf50; }
+  .badge.Suspicious { background: #3a2e14; color: #ff9800; }
+  .badge.Malicious { background: #3a1616; color: #f44336; }
+  .panel {
+    background: #1a2332;
+    border: 1px solid #2a3441;
+    border-radius: 10px;
+    padding: 20px;
+  }
+  .panel h3 { margin-top: 0; font-size: 16px; }
+  .field { margin-bottom: 10px; font-size: 13px; }
+  .field .k { color: #8899a6; }
+  .reasons li { font-size: 13px; margin-bottom: 6px; color: #cfd8dc; }
+  button {
+    background: #2563eb;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    margin-right: 8px;
+    margin-top: 4px;
+  }
+  button:hover { background: #1d4ed8; }
+  button.secondary { background: #374151; }
+  button.secondary:hover { background: #4b5563; }
+  select, textarea {
+    width: 100%;
+    padding: 6px;
+    border-radius: 6px;
+    border: 1px solid #2a3441;
+    background: #0f1419;
+    color: #e6e6e6;
+    margin-bottom: 8px;
+  }
+  .empty { color: #8899a6; text-align: center; padding: 40px; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel">
+const { useState, useEffect } = React;
+
+const API_BASE = "http://localhost:8000/api";
+
+function StatCard({ num, label, colorClass }) {
+  return (
+    <div className="stat-card">
+      <div className={"num " + (colorClass || "")}>{num}</div>
+      <div className="label">{label}</div>
+    </div>
+  );
+}
+
+function App() {
+  const [stats, setStats] = useState({});
+  const [cases, setCases] = useState([]);
+  const [selectedCase, setSelectedCase] = useState(null);
+  const [uploading, setUploading] = useState(false);
+  const [overrideVerdict, setOverrideVerdict] = useState("");
+  const [notes, setNotes] = useState("");
+
+  const refresh = () => {
+    fetch(`${API_BASE}/dashboard/stats`).then(r => r.json()).then(setStats);
+    fetch(`${API_BASE}/cases`).then(r => r.json()).then(setCases);
+  };
+
+  useEffect(() => { refresh(); }, []);
+
+  const handleUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setUploading(true);
+    const formData = new FormData();
+    formData.append("file", file);
+    try {
+      await fetch(`${API_BASE}/analyze`, { method: "POST", body: formData });
+      refresh();
+    } catch (err) {
+      alert("Upload failed: " + err.message + "\n(Is the FastAPI backend running on port 8000?)");
+    }
+    setUploading(false);
+  };
+
+  const openCase = (c) => {
+    fetch(`${API_BASE}/cases/${c.id}`).then(r => r.json()).then(full => {
+      setSelectedCase(full);
+      setOverrideVerdict(full.analyst_override_verdict || full.verdict);
+      setNotes(full.analyst_notes || "");
+    });
+  };
+
+  const submitOverride = async () => {
+    await fetch(`${API_BASE}/cases/${selectedCase.id}/override`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ verdict: overrideVerdict, notes }),
+    });
+    refresh();
+    openCase(selectedCase);
+  };
+
+  const downloadReport = () => {
+    window.open(`${API_BASE}/cases/${selectedCase.id}/report`, "_blank");
+  };
+
+  return (
+    <div>
+      <div className="header">
+        <div>
+          <h1>🛡️ SentinelMail AI — Analyst Dashboard</h1>
+          <div className="tag">SIH26106 — AI-Powered Email Threat Detection, GeoLocation & Forensic Intelligence Platform</div>
+        </div>
+      </div>
+
+      <div className="stats-row">
+        <StatCard num={stats.total_cases || 0} label="Total Cases" />
+        <StatCard num={stats.malicious || 0} label="Malicious" colorClass="malicious" />
+        <StatCard num={stats.suspicious || 0} label="Suspicious" colorClass="suspicious" />
+        <StatCard num={stats.safe || 0} label="Safe" colorClass="safe" />
+        <StatCard num={stats.pending_review || 0} label="Pending Review" />
+      </div>
+
+      <div className="main">
+        <div className="cases-panel">
+          <div className="upload-box">
+            <input type="file" accept=".eml" onChange={handleUpload} disabled={uploading} />
+            <div style={{marginTop:8, fontSize:12, color:"#8899a6"}}>
+              {uploading ? "Analyzing..." : "Upload an .eml file to run it through the pipeline"}
+            </div>
+          </div>
+
+          <div className="panel">
+            <h3>Case History</h3>
+            {cases.length === 0 ? (
+              <div className="empty">No cases yet — upload an email above to get started.</div>
+            ) : (
+              <table>
+                <thead>
+                  <tr><th>Subject</th><th>Sender</th><th>Verdict</th><th>Score</th></tr>
+                </thead>
+                <tbody>
+                  {cases.map(c => (
+                    <tr key={c.id} onClick={() => openCase(c)}>
+                      <td>{c.subject}</td>
+                      <td>{c.sender}</td>
+                      <td><span className={"badge " + (c.analyst_override_verdict || c.verdict)}>
+                        {c.analyst_override_verdict || c.verdict}
+                        {c.analyst_override_verdict ? " (overridden)" : ""}
+                      </span></td>
+                      <td>{c.final_score}/100</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </div>
+
+        <div className="detail-panel">
+          <div className="panel">
+            <h3>Case Detail</h3>
+            {!selectedCase ? (
+              <div className="empty">Select a case to review evidence and export a report.</div>
+            ) : (
+              <div>
+                <div className="field"><span className="k">Subject:</span> {selectedCase.subject}</div>
+                <div className="field"><span className="k">From:</span> {selectedCase.sender}</div>
+                <div className="field"><span className="k">Sender IP:</span> {selectedCase.originating_ip || "Not determined"}</div>
+                <div className="field"><span className="k">Location:</span> {selectedCase.geo_city || "Unknown"}, {selectedCase.geo_country || ""}</div>
+                <div className="field"><span className="k">SPF / DKIM / DMARC:</span> {selectedCase.spf_result} / {selectedCase.dkim_result} / {selectedCase.dmarc_result}</div>
+                <div className="field"><span className="k">ML Phishing Confidence:</span> {(selectedCase.ml_phishing_probability * 100).toFixed(1)}%</div>
+                <div className="field"><span className="k">System Verdict:</span> <span className={"badge " + selectedCase.verdict}>{selectedCase.verdict}</span> ({selectedCase.final_score}/100)</div>
+
+                <h3 style={{marginTop:20}}>Evidence</h3>
+                <ul className="reasons">
+                  {selectedCase.reasons.map((r, i) => <li key={i}>• {r}</li>)}
+                </ul>
+
+                <h3 style={{marginTop:20}}>Analyst Review / Override</h3>
+                <select value={overrideVerdict} onChange={e => setOverrideVerdict(e.target.value)}>
+                  <option>Safe</option>
+                  <option>Suspicious</option>
+                  <option>Malicious</option>
+                </select>
+                <textarea rows="3" placeholder="Analyst notes..." value={notes} onChange={e => setNotes(e.target.value)} />
+                <button onClick={submitOverride}>Save Override</button>
+                <button className="secondary" onClick={downloadReport}>📄 Export Forensic PDF</button>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+</body>
+</html>
