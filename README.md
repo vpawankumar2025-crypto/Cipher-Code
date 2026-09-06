@@ -65,7 +65,9 @@ On Windows PowerShell:
 
 ```powershell
 python -m venv venv
-.\venv\Scripts\Activate.ps1
+
+# on Windows: venv\Scripts\activate
+
 pip install -r requirements.txt
 ```
 
