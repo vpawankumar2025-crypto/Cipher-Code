@@ -53,8 +53,8 @@ Step 6: Analyst dashboard     → dashboard.html (React) + backend.py (FastAPI A
 Do this once:
 
 ```bash
-unzip sentinelmail_full.zip
-cd sentinelmail_full
+unzip Cipher-Code.zip
+cd Cipher-Code
 
 python3 -m venv venv
 source venv/bin/activate
