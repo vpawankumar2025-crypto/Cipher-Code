@@ -64,6 +64,9 @@ pip install -r requirements.txt
 On Windows PowerShell:
 
 ```powershell
+
+unzip Cipher-Code.zip
+cd Cipher-Code
 python -m venv venv
 
 # on Windows: venv\Scripts\activate
