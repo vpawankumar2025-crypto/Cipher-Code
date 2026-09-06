@@ -48,21 +48,69 @@ Step 6: Analyst dashboard     → dashboard.html (React) + backend.py (FastAPI A
                                  review, override verdicts, export PDF
 ```
 
-## Setup (10 minutes)
+## Setup
+
+Do this once:
 
 ```bash
+unzip sentinelmail_full.zip
+cd sentinelmail_full
+
+python3 -m venv venv
+source venv/bin/activate
 pip install -r requirements.txt
+```
 
-# 1. Train the ML model (creates phishing_model.pkl)
-python3 train_model.py
+On Windows PowerShell:
 
-# 2. Start the FastAPI backend
-uvicorn backend:app --reload --port 8000
+```powershell
+python -m venv venv
+.\venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+```
 
-# 3. Open the dashboard — just open this file directly in a browser:
-#    (no build step needed, it's plain HTML + React via CDN)
-open dashboard.html        # macOS
-# or just double-click dashboard.html / drag into Chrome
+## Option A - Quick demo
+
+Just upload an `.eml` file and see a verdict. No backend is needed.
+
+```bash
+streamlit run app.py
+```
+
+If `streamlit` is not recognized, use:
+
+```bash
+python -m streamlit run app.py
+```
+
+This usually opens automatically in your browser at `http://localhost:8501` [web:24][web:30].
+
+## Option B - Full app
+
+Start the FastAPI backend:
+
+```bash
+python -m uvicorn backend:app --reload --port 8000
+```
+
+Then open `dashboard.html`. Since it is a static file that calls the API, you can open it directly in your browser or serve it locally so relative paths behave correctly.
+
+In a second terminal, from the same folder:
+
+```bash
+python3 -m http.server 8080
+```
+
+On Windows:
+
+```powershell
+python -m http.server 8080
+```
+
+Then visit:
+
+```text
+http://localhost:8080/dashboard.html
 ```
 
 The dashboard talks to the backend at `http://localhost:8000` — make sure the
