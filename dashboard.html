@@ -1,0 +1,980 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>SentinelMail AI — Analyst Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+<style>
+  :root {
+    /* ---- Color tokens ---- */
+    --bg: #0B0E13;
+    --bg-elevated: #12161C;
+    --bg-elevated-2: #181D25;
+    --bg-inset: #0D1015;
+    --border: #232932;
+    --border-strong: #313944;
+    --text: #E7EAEE;
+    --text-muted: #8B95A3;
+    --text-dim: #5C6472;
+    --accent: #22D3EE;
+    --accent-strong: #06B6D4;
+    --accent-dim: rgba(34, 211, 238, 0.12);
+    --safe: #34D399;
+    --safe-bg: #10251E;
+    --suspicious: #FBBF24;
+    --suspicious-bg: #2A2110;
+    --malicious: #FB4D6C;
+    --malicious-bg: #2C1218;
+
+    /* ---- Type tokens ---- */
+    --font-display: "Space Grotesk", -apple-system, sans-serif;
+    --font-body: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+
+    /* ---- Space tokens ---- */
+    --space-2: 8px;
+    --space-3: 12px;
+    --space-4: 16px;
+    --space-5: 20px;
+    --space-6: 24px;
+    --space-8: 32px;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: var(--font-body);
+    background: var(--bg);
+    color: var(--text);
+    -webkit-font-smoothing: antialiased;
+  }
+  h1, h2, h3 { font-family: var(--font-display); letter-spacing: -0.01em; }
+  .mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+
+  *:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  /* ---- Header ---- */
+  .header {
+    background: linear-gradient(180deg, var(--bg-elevated) 0%, var(--bg) 100%);
+    padding: var(--space-5) var(--space-8);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--space-3);
+  }
+  .header h1 {
+    margin: 0;
+    font-size: 21px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .header .tag { color: var(--text-muted); font-size: 13px; margin-top: 4px; }
+  .header .tag-id {
+    display: inline-block;
+    background: var(--bg-elevated-2);
+    border: 1px solid var(--border-strong);
+    color: var(--text-muted);
+    font-size: 11px;
+    padding: 1px 7px;
+    border-radius: 4px;
+    margin-right: 8px;
+  }
+  .header .who { display: flex; align-items: center; gap: var(--space-4); font-size: 13px; color: var(--text-muted); }
+  .live-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--safe);
+    font-family: var(--font-mono);
+  }
+  .live-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--safe);
+    box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.6);
+    animation: livePulse 2.4s ease-out infinite;
+  }
+  @keyframes livePulse {
+    0%   { box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.55); }
+    70%  { box-shadow: 0 0 0 6px rgba(52, 211, 153, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(52, 211, 153, 0); }
+  }
+
+  /* ---- Stat cards ---- */
+  .stats-row {
+    display: flex;
+    gap: var(--space-4);
+    padding: var(--space-5) var(--space-8);
+    flex-wrap: wrap;
+  }
+  .stat-card {
+    position: relative;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: var(--space-4) var(--space-5);
+    padding-top: calc(var(--space-4) + 3px);
+    min-width: 140px;
+    flex: 1 1 140px;
+    overflow: hidden;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.03);
+  }
+  .stat-card::before {
+    content: "";
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: var(--text-dim);
+  }
+  .stat-card.safe::before { background: var(--safe); }
+  .stat-card.suspicious::before { background: var(--suspicious); }
+  .stat-card.malicious::before { background: var(--malicious); }
+  .stat-card.total::before { background: var(--accent); }
+  .stat-card .num { font-family: var(--font-mono); font-size: 26px; font-weight: 600; }
+  .stat-card .label { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+  .safe { color: var(--safe); }
+  .suspicious { color: var(--suspicious); }
+  .malicious { color: var(--malicious); }
+
+  /* ---- Main layout ---- */
+  .main {
+    display: flex;
+    gap: var(--space-5);
+    padding: 0 var(--space-8) var(--space-8);
+  }
+  .cases-panel { flex: 1.2; min-width: 0; }
+  .detail-panel { flex: 1; min-width: 0; }
+
+  /* ---- Scan zone (upload) ---- */
+  .scan-zone {
+    position: relative;
+    background: var(--bg-elevated-2);
+    border-radius: 10px;
+    padding: var(--space-5);
+    margin-bottom: var(--space-5);
+    text-align: center;
+    background-image:
+      linear-gradient(var(--accent), var(--accent)), linear-gradient(var(--accent), var(--accent)),
+      linear-gradient(var(--accent), var(--accent)), linear-gradient(var(--accent), var(--accent)),
+      linear-gradient(var(--accent), var(--accent)), linear-gradient(var(--accent), var(--accent)),
+      linear-gradient(var(--accent), var(--accent)), linear-gradient(var(--accent), var(--accent));
+    background-size: 16px 2px, 2px 16px, 16px 2px, 2px 16px, 16px 2px, 2px 16px, 16px 2px, 2px 16px;
+    background-position: top left, top left, top right, top right, bottom left, bottom left, bottom right, bottom right;
+    background-repeat: no-repeat;
+    opacity: 1;
+  }
+  .scan-zone input[type="file"] { color: var(--text); max-width: 100%; font-family: var(--font-body); font-size: 13px; }
+  .scan-zone .hint { margin-top: var(--space-2); font-size: 12px; color: var(--text-muted); }
+  .scan-zone.analyzing { overflow: hidden; }
+  .scan-zone.analyzing::after {
+    content: "";
+    position: absolute;
+    top: 0; left: -35%;
+    width: 35%; height: 100%;
+    background: linear-gradient(90deg, transparent, var(--accent-dim), transparent);
+    animation: sweep 1.3s linear infinite;
+  }
+  @keyframes sweep {
+    from { left: -35%; }
+    to   { left: 100%; }
+  }
+
+  /* ---- Panels ---- */
+  .panel {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: var(--space-5);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.03);
+  }
+  .panel h3 { margin-top: 0; font-size: 15px; font-weight: 600; }
+
+  /* ---- Table ---- */
+  .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  table { width: 100%; min-width: 480px; border-collapse: collapse; }
+  th, td { text-align: left; padding: 11px 8px; font-size: 13px; border-bottom: 1px solid var(--border); }
+  th { color: var(--text-muted); font-weight: 500; font-size: 12px; }
+  tbody tr {
+    cursor: pointer;
+    box-shadow: inset 3px 0 0 transparent;
+    transition: background 0.15s ease, box-shadow 0.15s ease;
+  }
+  tbody tr:hover { background: var(--bg-elevated-2); }
+  tbody tr.selected {
+    background: var(--bg-elevated-2);
+    box-shadow: inset 3px 0 0 var(--accent);
+  }
+  td.mono { font-size: 12.5px; color: var(--text-muted); }
+
+  /* ---- Badges ---- */
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px 4px 8px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 600;
+    font-family: var(--font-mono);
+    white-space: nowrap;
+  }
+  .badge::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
+  .badge.Safe { background: var(--safe-bg); color: var(--safe); }
+  .badge.Suspicious { background: var(--suspicious-bg); color: var(--suspicious); }
+  .badge.Malicious {
+    background: var(--malicious-bg);
+    color: var(--malicious);
+    animation: badgeGlow 2.2s ease-in-out infinite;
+  }
+  @keyframes badgeGlow {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(251, 77, 108, 0); }
+    50%      { box-shadow: 0 0 8px 1px rgba(251, 77, 108, 0.35); }
+  }
+
+  /* ---- Case detail ---- */
+  .field { margin-bottom: 11px; font-size: 13px; word-break: break-word; }
+  .field .k { color: var(--text-muted); margin-right: 4px; }
+  .field .v-mono { font-family: var(--font-mono); font-size: 12.5px; }
+  .reasons { list-style: none; margin: 0; padding: 0; }
+  .reasons li {
+    position: relative;
+    font-size: 13px;
+    margin-bottom: 8px;
+    padding-left: 16px;
+    color: #cfd8dc;
+    line-height: 1.5;
+  }
+  .reasons li::before {
+    content: "";
+    position: absolute;
+    left: 0; top: 6px;
+    width: 5px; height: 5px;
+    border-radius: 50%;
+    background: var(--accent);
+  }
+
+  /* ---- Connected mailboxes ---- */
+  .mailbox-list { margin-bottom: var(--space-4); }
+  .mailbox-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+  }
+  .mailbox-row:last-child { border-bottom: none; }
+  .mailbox-info { display: flex; align-items: center; gap: 10px; min-width: 0; }
+  .provider-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .provider-dot.google { background: #EA9A3E; }
+  .provider-dot.microsoft { background: #7FBA00; }
+  .mailbox-email { font-size: 13px; font-weight: 500; word-break: break-word; }
+  .mailbox-meta { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+  .mailbox-actions { display: flex; gap: 8px; flex-shrink: 0; }
+  .mailbox-actions button { margin: 0; padding: 6px 12px; font-size: 12.5px; min-height: 32px; }
+  .connect-row { display: flex; gap: 8px; flex-wrap: wrap; padding-top: var(--space-2); }
+  .connect-row button { margin: 0; }
+
+  /* ---- Buttons ---- */
+  button {
+    background: var(--accent);
+    color: #04222A;
+    border: none;
+    padding: 10px 18px;
+    border-radius: 7px;
+    cursor: pointer;
+    font-family: var(--font-body);
+    font-weight: 600;
+    font-size: 14px;
+    margin-right: 8px;
+    margin-top: 4px;
+    min-height: 40px;
+    transition: background 0.15s ease, box-shadow 0.15s ease, transform 0.05s ease;
+  }
+  button:hover { background: var(--accent-strong); box-shadow: 0 0 0 3px var(--accent-dim); }
+  button:active { transform: translateY(1px); }
+  button.secondary {
+    background: transparent;
+    color: var(--text);
+    border: 1px solid var(--border-strong);
+    font-weight: 500;
+  }
+  button.secondary:hover { background: var(--bg-elevated-2); box-shadow: none; border-color: var(--text-dim); }
+  button:disabled { opacity: 0.5; cursor: default; box-shadow: none; transform: none; }
+
+  /* ---- Form controls ---- */
+  select, textarea, input[type="text"], input[type="password"], input[type="email"] {
+    width: 100%;
+    padding: 10px 12px;
+    border-radius: 7px;
+    border: 1px solid var(--border-strong);
+    background: var(--bg-inset);
+    color: var(--text);
+    margin-bottom: var(--space-2);
+    font-size: 14px;
+    font-family: var(--font-body);
+    transition: border-color 0.15s ease;
+  }
+  select:focus, textarea:focus, input:focus { border-color: var(--accent); }
+  input:disabled { color: var(--text-dim); background: var(--bg-elevated); }
+  .empty { color: var(--text-muted); text-align: center; padding: 40px 20px; font-size: 13px; line-height: 1.6; }
+
+  /* ---- Auth screens ---- */
+  .auth-wrap {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-5);
+    background:
+      radial-gradient(circle at 20% 10%, rgba(34,211,238,0.06), transparent 40%),
+      var(--bg);
+  }
+  .auth-card {
+    position: relative;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: var(--space-6);
+    width: 100%;
+    max-width: 400px;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.03);
+  }
+  .auth-card::before {
+    content: "";
+    position: absolute;
+    top: 0; left: var(--space-6); right: var(--space-6);
+    height: 2px;
+    background: linear-gradient(90deg, var(--accent), transparent);
+    border-radius: 2px;
+  }
+  .auth-card h2 { margin: 0 0 4px; font-size: 19px; font-weight: 600; }
+  .auth-card .auth-sub { color: var(--text-muted); font-size: 13px; margin-bottom: var(--space-5); }
+  .auth-card label { display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 4px; margin-top: var(--space-3); }
+  .error-msg { background: var(--malicious-bg); color: var(--malicious); border-radius: 7px; padding: 9px 12px; font-size: 13px; margin-bottom: var(--space-2); }
+  .info-msg { background: var(--accent-dim); color: var(--accent); border-radius: 7px; padding: 9px 12px; font-size: 13px; margin-bottom: var(--space-2); }
+  .success-msg { background: var(--safe-bg); color: var(--safe); border-radius: 7px; padding: 1px 6px; font-size: 11px; margin-bottom: 0; font-family: var(--font-mono); }
+  .link-btn {
+    background: none; border: none; color: var(--accent); cursor: pointer;
+    font-size: 13px; padding: 0; margin: var(--space-2) 0 0; min-height: auto; text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+  .link-btn:hover { background: none; color: var(--accent-strong); box-shadow: none; }
+  .otp-row { display: flex; gap: 8px; align-items: flex-end; }
+  .otp-row input { flex: 1; font-family: var(--font-mono); letter-spacing: 0.08em; }
+  .otp-row button { flex-shrink: 0; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .live-dot, .scan-zone.analyzing::after, .badge.Malicious { animation: none; }
+  }
+
+  /* Tablet and below: stack the two panels instead of side-by-side */
+  @media (max-width: 900px) {
+    .main { flex-direction: column; padding: 0 var(--space-5) var(--space-5); }
+    .header { padding: var(--space-4) var(--space-5); }
+    .stats-row { padding: var(--space-4) var(--space-5); gap: 10px; }
+  }
+
+  /* Phones: tighten spacing and font sizes further */
+  @media (max-width: 480px) {
+    .header h1 { font-size: 17px; }
+    .header .tag { font-size: 12px; }
+    .stats-row { gap: 8px; }
+    .stat-card { min-width: 100px; padding: 12px 14px; }
+    .stat-card .num { font-size: 21px; }
+    .main { padding: 0 var(--space-3) var(--space-3); gap: 12px; }
+    .panel { padding: 14px; }
+    .scan-zone { padding: 14px; }
+    button { width: 100%; margin-right: 0; }
+    .auth-card { padding: 20px; }
+    .otp-row { flex-direction: column; align-items: stretch; }
+  }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel">
+const { useState, useEffect } = React;
+
+// If this page is opened as a local file (file://) there's no host to infer from,
+// so fall back to localhost. If it's served over http(s) — including from a phone
+// or tablet hitting your laptop's LAN IP — use that same host, since the backend
+// needs to be reachable at <that-host>:8000 (run it with --host 0.0.0.0, see backend.py).
+const API_HOST = window.location.hostname || "localhost";
+const API_PROTOCOL = window.location.protocol === "file:" ? "http:" : window.location.protocol;
+const API_BASE = `${API_PROTOCOL}//${API_HOST}:8000/api`;
+
+const TOKEN_KEY = "sentinelmail_token";
+// localStorage isn't available in every context this file might be opened in
+// (e.g. a sandboxed preview), so fall back to an in-memory token if it throws.
+// In-memory means a refresh will require logging in again in that situation —
+// on a real deployment (your own browser hitting your own server) localStorage
+// works normally and the session persists across reloads.
+let memoryToken = null;
+const tokenStore = {
+  get() { try { return localStorage.getItem(TOKEN_KEY); } catch (e) { return memoryToken; } },
+  set(t) { try { localStorage.setItem(TOKEN_KEY, t); } catch (e) { memoryToken = t; } },
+  clear() { try { localStorage.removeItem(TOKEN_KEY); } catch (e) {} memoryToken = null; },
+};
+
+function guessField(identifier) {
+  if (/^\S+@\S+\.\S+$/.test(identifier)) return "email";
+  if (/^\+?[0-9][0-9\s-]{6,14}$/.test(identifier)) return "mobile";
+  return "username";
+}
+
+function StatCard({ num, label, colorClass }) {
+  return (
+    <div className={"stat-card " + (colorClass || "")}>
+      <div className={"num " + (colorClass || "")}>{num}</div>
+      <div className="label">{label}</div>
+    </div>
+  );
+}
+
+// ---------------- Auth screen ----------------
+function AuthScreen({ onAuthenticated }) {
+  // stage: identifier -> login | signup -> otp (signup verification) | loginOtp
+  const [stage, setStage] = useState("identifier");
+  const [identifier, setIdentifier] = useState("");
+  const [password, setPassword] = useState("");
+  const [signupFields, setSignupFields] = useState({ username: "", email: "", mobile: "", password: "" });
+  const [emailOtp, setEmailOtp] = useState("");
+  const [mobileOtp, setMobileOtp] = useState("");
+  const [emailVerified, setEmailVerified] = useState(false);
+  const [mobileVerified, setMobileVerified] = useState(false);
+  const [loginOtpCode, setLoginOtpCode] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [info, setInfo] = useState("");
+
+  const api = async (path, body) => {
+    const res = await fetch(`${API_BASE}${path}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: body ? JSON.stringify(body) : undefined,
+    });
+    let data = {};
+    try { data = await res.json(); } catch (e) {}
+    if (!res.ok) throw new Error(data.detail || "Something went wrong");
+    return data;
+  };
+
+  const handleContinue = async () => {
+    if (!identifier.trim()) { setError("Enter your email, username, or mobile number."); return; }
+    setError(""); setBusy(true);
+    try {
+      const res = await fetch(`${API_BASE}/auth/check?identifier=${encodeURIComponent(identifier.trim())}`, { method: "POST" });
+      const data = await res.json();
+      if (data.exists) {
+        setStage("login");
+      } else {
+        const field = guessField(identifier.trim());
+        setSignupFields(f => ({ ...f, [field]: identifier.trim() }));
+        setStage("signup");
+      }
+    } catch (e) {
+      setError("Couldn't reach the backend. Is it running on port 8000?");
+    }
+    setBusy(false);
+  };
+
+  const handleLogin = async () => {
+    setError(""); setBusy(true);
+    try {
+      const data = await api("/auth/login", { identifier, password });
+      onAuthenticated(data.access_token);
+    } catch (e) { setError(e.message); }
+    setBusy(false);
+  };
+
+  const handleSendLoginOtp = async () => {
+    setError(""); setInfo(""); setBusy(true);
+    try {
+      await api("/auth/otp/request", { identifier, channel: "email", purpose: "login" });
+      setInfo("Code sent to your email.");
+      setStage("loginOtp");
+    } catch (e) { setError(e.message); }
+    setBusy(false);
+  };
+
+  const handleVerifyLoginOtp = async () => {
+    setError(""); setBusy(true);
+    try {
+      const data = await api("/auth/otp/verify", { identifier, code: loginOtpCode, purpose: "login", channel: "email" });
+      onAuthenticated(data.access_token);
+    } catch (e) { setError(e.message); }
+    setBusy(false);
+  };
+
+  const handleSignup = async () => {
+    const { username, email, mobile, password } = signupFields;
+    if (!username || !email || !mobile || !password) { setError("All fields are required."); return; }
+    setError(""); setBusy(true);
+    try {
+      await api("/auth/signup", { username, email, mobile, password });
+      setInfo("Account created. Enter the codes sent to your email and phone below.");
+      setStage("otp");
+    } catch (e) { setError(e.message); }
+    setBusy(false);
+  };
+
+  const verifyChannel = async (channel, code) => {
+    setError(""); setBusy(true);
+    try {
+      const identifierForChannel = channel === "email" ? signupFields.email : signupFields.mobile;
+      const data = await api("/auth/otp/verify", { identifier: identifierForChannel, code, purpose: "signup", channel });
+      if (channel === "email") setEmailVerified(true); else setMobileVerified(true);
+      if (data.fully_verified) {
+        onAuthenticated(data.access_token);
+      } else {
+        setInfo(data.message || "Verified. Waiting on the other channel.");
+      }
+    } catch (e) { setError(e.message); }
+    setBusy(false);
+  };
+
+  const resendOtp = async (channel) => {
+    setError(""); setInfo(""); setBusy(true);
+    try {
+      const identifierForChannel = channel === "email" ? signupFields.email : signupFields.mobile;
+      await api("/auth/otp/request", { identifier: identifierForChannel, channel, purpose: "signup" });
+      setInfo(`Code resent via ${channel}.`);
+    } catch (e) { setError(e.message); }
+    setBusy(false);
+  };
+
+  return (
+    <div className="auth-wrap">
+      <div className="auth-card">
+        <h2>🛡️ SentinelMail AI</h2>
+        <div className="auth-sub">Analyst Dashboard — sign in to continue</div>
+
+        {error && <div className="error-msg">{error}</div>}
+        {info && !error && <div className="info-msg">{info}</div>}
+
+        {stage === "identifier" && (
+          <div>
+            <label>Email, username, or mobile number</label>
+            <input type="text" value={identifier} onChange={e => setIdentifier(e.target.value)}
+              onKeyDown={e => e.key === "Enter" && handleContinue()} placeholder="you@company.com" />
+            <button onClick={handleContinue} disabled={busy} style={{width: "100%"}}>
+              {busy ? "Checking..." : "Continue"}
+            </button>
+          </div>
+        )}
+
+        {stage === "login" && (
+          <div>
+            <label>Signed in as</label>
+            <input type="text" value={identifier} disabled />
+            <label>Password</label>
+            <input type="password" value={password} onChange={e => setPassword(e.target.value)}
+              onKeyDown={e => e.key === "Enter" && handleLogin()} placeholder="••••••••" />
+            <button onClick={handleLogin} disabled={busy} style={{width: "100%"}}>
+              {busy ? "Signing in..." : "Log in"}
+            </button>
+            <button className="link-btn" onClick={handleSendLoginOtp} disabled={busy}>Log in with a one-time code instead</button>
+            <br />
+            <button className="link-btn" onClick={() => { setStage("identifier"); setError(""); setInfo(""); }}>← Use a different account</button>
+          </div>
+        )}
+
+        {stage === "loginOtp" && (
+          <div>
+            <div className="auth-sub" style={{marginBottom: 4}}>Enter the code sent to your email.</div>
+            <label>One-time code</label>
+            <div className="otp-row">
+              <input type="text" value={loginOtpCode} onChange={e => setLoginOtpCode(e.target.value)}
+                onKeyDown={e => e.key === "Enter" && handleVerifyLoginOtp()} placeholder="123456" />
+              <button onClick={handleVerifyLoginOtp} disabled={busy}>Verify</button>
+            </div>
+            <button className="link-btn" onClick={handleSendLoginOtp} disabled={busy}>Resend code</button>
+            <br />
+            <button className="link-btn" onClick={() => { setStage("login"); setError(""); setInfo(""); }}>← Back to password login</button>
+          </div>
+        )}
+
+        {stage === "signup" && (
+          <div>
+            <div className="auth-sub" style={{marginBottom: 4}}>No account found — let's create one.</div>
+            <label>Username</label>
+            <input type="text" value={signupFields.username} onChange={e => setSignupFields(f => ({...f, username: e.target.value}))} />
+            <label>Email</label>
+            <input type="email" value={signupFields.email} onChange={e => setSignupFields(f => ({...f, email: e.target.value}))} />
+            <label>Mobile number</label>
+            <input type="text" value={signupFields.mobile} onChange={e => setSignupFields(f => ({...f, mobile: e.target.value}))} placeholder="+91..." />
+            <label>Password</label>
+            <input type="password" value={signupFields.password} onChange={e => setSignupFields(f => ({...f, password: e.target.value}))} />
+            <button onClick={handleSignup} disabled={busy} style={{width: "100%"}}>
+              {busy ? "Creating account..." : "Create account"}
+            </button>
+            <button className="link-btn" onClick={() => { setStage("identifier"); setError(""); setInfo(""); }}>← Back</button>
+          </div>
+        )}
+
+        {stage === "otp" && (
+          <div>
+            <div className="auth-sub" style={{marginBottom: 4}}>
+              Both channels need verifying before you can sign in.
+            </div>
+            <label>Email code {emailVerified && <span className="success-msg" style={{padding: "1px 6px", marginLeft: 6}}>verified</span>}</label>
+            {!emailVerified && (
+              <div className="otp-row">
+                <input type="text" value={emailOtp} onChange={e => setEmailOtp(e.target.value)} placeholder="123456" />
+                <button onClick={() => verifyChannel("email", emailOtp)} disabled={busy}>Verify</button>
+              </div>
+            )}
+            {!emailVerified && <button className="link-btn" onClick={() => resendOtp("email")} disabled={busy}>Resend email code</button>}
+
+            <label style={{marginTop: 16}}>Mobile code {mobileVerified && <span className="success-msg" style={{padding: "1px 6px", marginLeft: 6}}>verified</span>}</label>
+            {!mobileVerified && (
+              <div className="otp-row">
+                <input type="text" value={mobileOtp} onChange={e => setMobileOtp(e.target.value)} placeholder="123456" />
+                <button onClick={() => verifyChannel("mobile", mobileOtp)} disabled={busy}>Verify</button>
+              </div>
+            )}
+            {!mobileVerified && <button className="link-btn" onClick={() => resendOtp("mobile")} disabled={busy}>Resend SMS code</button>}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ---------------- Main dashboard (requires a token) ----------------
+function Dashboard({ token, currentUser, onLogout }) {
+  const [stats, setStats] = useState({});
+  const [cases, setCases] = useState([]);
+  const [selectedCase, setSelectedCase] = useState(null);
+  const [uploading, setUploading] = useState(false);
+  const [overrideVerdict, setOverrideVerdict] = useState("");
+  const [notes, setNotes] = useState("");
+  const [mailboxes, setMailboxes] = useState([]);
+  const [connecting, setConnecting] = useState(null); // "google" | "microsoft" | null
+  const [syncingId, setSyncingId] = useState(null);
+
+  // Every request goes through here so the JWT is always attached, and a 401
+  // (expired/invalid token) drops the user back to the login screen instead
+  // of silently failing.
+  const apiFetch = async (path, options = {}) => {
+    const headers = Object.assign({}, options.headers, { Authorization: `Bearer ${token}` });
+    const res = await fetch(`${API_BASE}${path}`, { ...options, headers });
+    if (res.status === 401) {
+      onLogout();
+      throw new Error("Session expired — please log in again.");
+    }
+    return res;
+  };
+
+  const refresh = () => {
+    apiFetch("/dashboard/stats").then(r => r.json()).then(setStats).catch(() => {});
+    apiFetch("/cases").then(r => r.json()).then(setCases).catch(() => {});
+  };
+
+  const refreshMailboxes = () => {
+    apiFetch("/mailbox/list").then(r => r.json()).then(setMailboxes).catch(() => {});
+  };
+
+  useEffect(() => { refresh(); refreshMailboxes(); }, []);
+
+  // The OAuth consent screen opens in a popup (see connectMailbox below); the
+  // backend's callback page posts a message back here and closes itself once
+  // the provider redirects it, so we know to refresh the connected-account
+  // list and the case list (a first sync can happen almost immediately).
+  useEffect(() => {
+    const onMessage = (event) => {
+      if (!event.data || event.data.type !== "sentinelmail-oauth") return;
+      setConnecting(null);
+      refreshMailboxes();
+      if (event.data.status === "success") {
+        setTimeout(refresh, 4000); // give the first background sync a moment to land
+      } else if (event.data.message) {
+        alert("Mailbox connection failed: " + event.data.message);
+      }
+    };
+    window.addEventListener("message", onMessage);
+    return () => window.removeEventListener("message", onMessage);
+  }, []);
+
+  const connectMailbox = async (provider) => {
+    setConnecting(provider);
+    try {
+      const res = await apiFetch(`/mailbox/connect/${provider}`, { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) { alert(data.detail || "Couldn't start the connection."); setConnecting(null); return; }
+      const popup = window.open(data.auth_url, "sentinelmail-oauth", "width=520,height=650");
+      if (!popup) { alert("Your browser blocked the popup — allow popups for this site and try again."); setConnecting(null); }
+    } catch (err) {
+      setConnecting(null);
+    }
+  };
+
+  const disconnectMailbox = async (id) => {
+    if (!confirm("Disconnect this mailbox? It will stop syncing new cases automatically.")) return;
+    try {
+      await apiFetch(`/mailbox/${id}`, { method: "DELETE" });
+      refreshMailboxes();
+    } catch (err) {}
+  };
+
+  const syncMailboxNow = async (id) => {
+    setSyncingId(id);
+    try {
+      const res = await apiFetch(`/mailbox/${id}/sync`, { method: "POST" });
+      const data = await res.json();
+      if (res.ok) { refresh(); refreshMailboxes(); }
+      else alert(data.detail || "Sync failed.");
+    } catch (err) {}
+    setSyncingId(null);
+  };
+
+  const handleUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setUploading(true);
+    const formData = new FormData();
+    formData.append("file", file);
+    try {
+      await apiFetch("/analyze", { method: "POST", body: formData });
+      refresh();
+    } catch (err) {
+      alert("Upload failed: " + err.message + "\n(Is the FastAPI backend running on port 8000?)");
+    }
+    setUploading(false);
+  };
+
+  const openCase = (c) => {
+    apiFetch(`/cases/${c.id}`).then(r => r.json()).then(full => {
+      setSelectedCase(full);
+      setOverrideVerdict(full.analyst_override_verdict || full.verdict);
+      setNotes(full.analyst_notes || "");
+    }).catch(() => {});
+  };
+
+  const submitOverride = async () => {
+    try {
+      await apiFetch(`/cases/${selectedCase.id}/override`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ verdict: overrideVerdict, notes }),
+      });
+      refresh();
+      openCase(selectedCase);
+    } catch (err) {}
+  };
+
+  const downloadReport = async () => {
+    try {
+      const res = await apiFetch(`/cases/${selectedCase.id}/report`);
+      if (!res.ok) { alert("Failed to generate report."); return; }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      window.open(url, "_blank");
+    } catch (err) {}
+  };
+
+  return (
+    <div>
+      <div className="header">
+        <div>
+          <h1>🛡️ SentinelMail AI — Analyst Dashboard</h1>
+          <div className="tag">
+            <span className="tag-id mono">SIH26106</span>
+            AI-Powered Email Threat Detection, GeoLocation & Forensic Intelligence Platform
+          </div>
+        </div>
+        <div className="who">
+          <span className="live-badge"><span className="live-dot"></span>Live</span>
+          <span>{currentUser && currentUser.email}{currentUser && currentUser.role ? ` (${currentUser.role})` : ""}</span>
+          <button className="secondary" onClick={onLogout}>Log out</button>
+        </div>
+      </div>
+
+      <div className="stats-row">
+        <StatCard num={stats.total_cases || 0} label="Total Cases" colorClass="total" />
+        <StatCard num={stats.malicious || 0} label="Malicious" colorClass="malicious" />
+        <StatCard num={stats.suspicious || 0} label="Suspicious" colorClass="suspicious" />
+        <StatCard num={stats.safe || 0} label="Safe" colorClass="safe" />
+        <StatCard num={stats.pending_review || 0} label="Pending Review" />
+      </div>
+
+      <div className="main">
+        <div className="cases-panel">
+          <div className="panel" style={{marginBottom: "var(--space-5)"}}>
+            <h3>Connected Mailboxes</h3>
+            {mailboxes.length === 0 ? (
+              <div className="empty" style={{padding: "16px 0"}}>No inbox connected yet — link Gmail or Outlook to scan mail automatically, no upload needed.</div>
+            ) : (
+              <div className="mailbox-list">
+                {mailboxes.map(m => (
+                  <div key={m.id} className="mailbox-row">
+                    <div className="mailbox-info">
+                      <span className={"provider-dot " + m.provider}></span>
+                      <div>
+                        <div className="mailbox-email">{m.email_address}</div>
+                        <div className="mailbox-meta">
+                          {m.status === "error"
+                            ? <span className="malicious">Sync error — {m.last_error}</span>
+                            : m.last_synced_at
+                              ? <span className="mono">Last synced {new Date(m.last_synced_at).toLocaleString()}</span>
+                              : "Not synced yet"}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="mailbox-actions">
+                      <button className="secondary" onClick={() => syncMailboxNow(m.id)} disabled={syncingId === m.id}>
+                        {syncingId === m.id ? "Syncing..." : "Sync now"}
+                      </button>
+                      <button className="secondary" onClick={() => disconnectMailbox(m.id)}>Disconnect</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+            <div className="connect-row">
+              <button onClick={() => connectMailbox("google")} disabled={connecting !== null}>
+                {connecting === "google" ? "Connecting..." : "Connect Gmail"}
+              </button>
+              <button onClick={() => connectMailbox("microsoft")} disabled={connecting !== null}>
+                {connecting === "microsoft" ? "Connecting..." : "Connect Outlook"}
+              </button>
+            </div>
+          </div>
+
+          <div className={"scan-zone" + (uploading ? " analyzing" : "")}>
+            <input type="file" accept=".eml" onChange={handleUpload} disabled={uploading} />
+            <div className="hint">
+              {uploading ? "Scanning message for threat indicators..." : "Upload an .eml file to run it through the pipeline"}
+            </div>
+          </div>
+
+          <div className="panel">
+            <h3>Case History</h3>
+            {cases.length === 0 ? (
+              <div className="empty">No cases yet — upload an email above to get started.</div>
+            ) : (
+              <div className="table-scroll">
+                <table>
+                  <thead>
+                    <tr><th>Subject</th><th>Sender</th><th>Verdict</th><th>Score</th></tr>
+                  </thead>
+                  <tbody>
+                    {cases.map(c => (
+                      <tr
+                        key={c.id}
+                        onClick={() => openCase(c)}
+                        className={selectedCase && selectedCase.id === c.id ? "selected" : ""}
+                      >
+                        <td>{c.subject}</td>
+                        <td>{c.sender}</td>
+                        <td><span className={"badge " + (c.analyst_override_verdict || c.verdict)}>
+                          {c.analyst_override_verdict || c.verdict}
+                          {c.analyst_override_verdict ? " (overridden)" : ""}
+                        </span></td>
+                        <td className="mono">{c.final_score}/100</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="detail-panel">
+          <div className="panel">
+            <h3>Case Detail</h3>
+            {!selectedCase ? (
+              <div className="empty">Select a case to review evidence and export a report.</div>
+            ) : (
+              <div>
+                <div className="field"><span className="k">Subject:</span> {selectedCase.subject}</div>
+                <div className="field"><span className="k">From:</span> {selectedCase.sender}</div>
+                <div className="field"><span className="k">Sender IP:</span> <span className="v-mono">{selectedCase.originating_ip || "Not determined"}</span></div>
+                <div className="field"><span className="k">Location:</span> {selectedCase.geo_city || "Unknown"}, {selectedCase.geo_country || ""}</div>
+                <div className="field"><span className="k">SPF / DKIM / DMARC:</span> <span className="v-mono">{selectedCase.spf_result} / {selectedCase.dkim_result} / {selectedCase.dmarc_result}</span></div>
+                <div className="field"><span className="k">ML Phishing Confidence:</span> <span className="v-mono">{(selectedCase.ml_phishing_probability * 100).toFixed(1)}%</span></div>
+                <div className="field"><span className="k">System Verdict:</span> <span className={"badge " + selectedCase.verdict}>{selectedCase.verdict}</span> <span className="v-mono">({selectedCase.final_score}/100)</span></div>
+
+                <h3 style={{marginTop:20}}>Evidence</h3>
+                <ul className="reasons">
+                  {selectedCase.reasons.map((r, i) => <li key={i}>{r}</li>)}
+                </ul>
+
+                <h3 style={{marginTop:20}}>Analyst Review / Override</h3>
+                <select value={overrideVerdict} onChange={e => setOverrideVerdict(e.target.value)}>
+                  <option>Safe</option>
+                  <option>Suspicious</option>
+                  <option>Malicious</option>
+                </select>
+                <textarea rows="3" placeholder="Analyst notes..." value={notes} onChange={e => setNotes(e.target.value)} />
+                <button onClick={submitOverride}>Save Override</button>
+                <button className="secondary" onClick={downloadReport}>📄 Export Forensic PDF</button>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---------------- Root: decides auth vs dashboard ----------------
+function App() {
+  const [token, setToken] = useState(tokenStore.get());
+  const [currentUser, setCurrentUser] = useState(null);
+  const [checkingSession, setCheckingSession] = useState(!!tokenStore.get());
+
+  useEffect(() => {
+    if (!token) { setCheckingSession(false); return; }
+    fetch(`${API_BASE}/auth/me`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => { if (!r.ok) throw new Error("invalid session"); return r.json(); })
+      .then(me => { setCurrentUser(me); setCheckingSession(false); })
+      .catch(() => { tokenStore.clear(); setToken(null); setCheckingSession(false); });
+  }, [token]);
+
+  const handleAuthenticated = (newToken) => {
+    tokenStore.set(newToken);
+    setToken(newToken);
+  };
+
+  const handleLogout = () => {
+    tokenStore.clear();
+    setToken(null);
+    setCurrentUser(null);
+  };
+
+  if (checkingSession) {
+    return <div className="auth-wrap"><div style={{color: "#8B95A3", fontFamily: "var(--font-mono)", fontSize: 13}}>Checking session...</div></div>;
+  }
+
+  if (!token) {
+    return <AuthScreen onAuthenticated={handleAuthenticated} />;
+  }
+
+  return <Dashboard token={token} currentUser={currentUser} onLogout={handleLogout} />;
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+</body>
+</html>
