@@ -1,0 +1,25 @@
+From: "Sarah Chen" <sarah.chen@acmecorp.com>
+To: team@acmecorp.com
+Subject: Project update - Q3 deliverables
+Date: Mon, 1 Sep 2025 09:15:00 +0000
+Reply-To: sarah.chen@acmecorp.com
+Return-Path: <sarah.chen@acmecorp.com>
+Received: from mail.acmecorp.com (mail.acmecorp.com [52.14.0.10])
+    by mx.example.com with ESMTP id def456
+    for <team@acmecorp.com>; Mon, 1 Sep 2025 09:15:00 +0000
+Authentication-Results: mx.example.com; spf=pass smtp.mailfrom=acmecorp.com; dkim=pass; dmarc=pass
+Message-ID: <def456@acmecorp.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
+
+Hi team,
+
+Here is a quick summary of where we stand on the Q3 deliverables. The
+dashboard redesign is on track for next Friday, and QA has signed off on
+the API changes from last sprint.
+
+Let me know if you have any questions or would like to discuss further in
+tomorrow's standup.
+
+Thanks,
+Sarah

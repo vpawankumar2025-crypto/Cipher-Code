@@ -1,0 +1,43 @@
+# docker compose up --build
+# Dashboard: http://localhost:8000/app      API docs: http://localhost:8000/docs
+#
+# SQLite by default so this comes up with zero configuration on a judge's
+# laptop. The Postgres service is commented out below — uncomment it (and the
+# DATABASE_URL line) if you want to demo the multi-user/production path.
+
+services:
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: sqlite:////app/data/sentinelmail.db
+      # DATABASE_URL: postgresql+psycopg2://sentinel:sentinel@db:5432/sentinelmail
+    volumes:
+      # Cases survive a container restart — a judge re-running `up` shouldn't
+      # lose the demo data you seeded.
+      - sentinel_data:/app/data
+    restart: unless-stopped
+    # depends_on:
+    #   db:
+    #     condition: service_healthy
+
+  # db:
+  #   image: postgres:16-alpine
+  #   environment:
+  #     POSTGRES_USER: sentinel
+  #     POSTGRES_PASSWORD: sentinel
+  #     POSTGRES_DB: sentinelmail
+  #   volumes:
+  #     - sentinel_pg:/var/lib/postgresql/data
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "pg_isready -U sentinel"]
+  #     interval: 5s
+  #     timeout: 3s
+  #     retries: 10
+
+volumes:
+  sentinel_data:
+  # sentinel_pg:

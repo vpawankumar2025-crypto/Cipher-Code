@@ -1,0 +1,1507 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>SentinelMail AI — Analyst Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<style>
+  :root {
+    /* ---- Color tokens ---- */
+    --bg: #07090E;
+    --bg-elevated: #0F131C;
+    --bg-elevated-2: #161C27;
+    --bg-inset: #0A0D14;
+    --border: rgba(255, 255, 255, 0.08);
+    --border-strong: rgba(255, 255, 255, 0.16);
+    --text: #F1F5F9;
+    --text-muted: #94A3B8;
+    --text-dim: #64748B;
+    --accent: #06B6D4;
+    --accent-glow: rgba(6, 182, 212, 0.25);
+    --accent-dim: rgba(6, 182, 212, 0.12);
+    --safe: #10B981;
+    --safe-bg: rgba(16, 185, 129, 0.12);
+    --suspicious: #F59E0B;
+    --suspicious-bg: rgba(245, 158, 11, 0.12);
+    --malicious: #EF4444;
+    --malicious-bg: rgba(239, 68, 68, 0.12);
+
+    /* ---- Type tokens ---- */
+    --font-display: "Plus Jakarta Sans", -apple-system, sans-serif;
+    --font-body: "Plus Jakarta Sans", -apple-system, sans-serif;
+    --font-mono: "JetBrains Mono", monospace;
+
+    /* ---- Space tokens ---- */
+    --space-2: 8px;
+    --space-3: 12px;
+    --space-4: 16px;
+    --space-5: 20px;
+    --space-6: 24px;
+    --space-8: 32px;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: var(--font-body);
+    background: var(--bg);
+    color: var(--text);
+    -webkit-font-smoothing: antialiased;
+    background-image: 
+      radial-gradient(circle at 15% 15%, rgba(6, 182, 212, 0.05) 0%, transparent 40%),
+      radial-gradient(circle at 85% 85%, rgba(239, 68, 68, 0.03) 0%, transparent 40%);
+    background-attachment: fixed;
+  }
+  h1, h2, h3, h4 { font-family: var(--font-display); letter-spacing: -0.02em; font-weight: 700; }
+  .mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+
+  *:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    border-radius: 6px;
+  }
+
+  /* ---- Custom Scrollbar ---- */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 4px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--text-dim); }
+
+  /* ---- Header ---- */
+  .header {
+    background: rgba(15, 19, 28, 0.75);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    padding: var(--space-4) var(--space-8);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--space-3);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .header h1 {
+    margin: 0;
+    font-size: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .header .tag { color: var(--text-muted); font-size: 12px; margin-top: 4px; font-weight: 500; }
+  .header .tag-id {
+    display: inline-block;
+    background: var(--bg-elevated-2);
+    border: 1px solid var(--border-strong);
+    color: var(--accent);
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 6px;
+    margin-right: 8px;
+    font-weight: 600;
+  }
+  .header .who { display: flex; align-items: center; gap: var(--space-4); font-size: 13px; color: var(--text-muted); }
+  .live-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    background: var(--safe-bg);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--safe);
+    font-family: var(--font-mono);
+  }
+  .live-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--safe);
+    box-shadow: 0 0 8px var(--safe);
+    animation: livePulse 2s infinite;
+  }
+  @keyframes livePulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.4; transform: scale(0.85); }
+  }
+
+  /* ---- Stat cards ---- */
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: var(--space-4);
+    padding: var(--space-5) var(--space-8);
+  }
+  .stat-card {
+    position: relative;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: var(--space-4) var(--space-5);
+    overflow: hidden;
+    transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+  }
+  .stat-card:hover {
+    transform: translateY(-2px);
+    border-color: var(--border-strong);
+    box-shadow: 0 8px 20px -6px rgba(0,0,0,0.5);
+  }
+  .stat-card::before {
+    content: "";
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: var(--text-dim);
+  }
+  .stat-card.safe::before { background: var(--safe); box-shadow: 0 0 10px var(--safe); }
+  .stat-card.suspicious::before { background: var(--suspicious); box-shadow: 0 0 10px var(--suspicious); }
+  .stat-card.malicious::before { background: var(--malicious); box-shadow: 0 0 10px var(--malicious); }
+  .stat-card.total::before { background: var(--accent); box-shadow: 0 0 10px var(--accent); }
+  .stat-card .num { font-family: var(--font-mono); font-size: 28px; font-weight: 700; line-height: 1.2; }
+  .stat-card .label { font-size: 12px; font-weight: 500; color: var(--text-muted); margin-top: 4px; text-transform: uppercase; letter-spacing: 0.05em; }
+  .safe { color: var(--safe); }
+  .suspicious { color: var(--suspicious); }
+  .malicious { color: var(--malicious); }
+
+  /* ---- Main layout ---- */
+  .main {
+    display: flex;
+    gap: var(--space-5);
+    padding: 0 var(--space-8) var(--space-8);
+  }
+  .cases-panel { flex: 1.2; min-width: 0; }
+  .detail-panel { flex: 1; min-width: 0; }
+
+  /* ---- Scan zone (upload) ---- */
+  .scan-zone {
+    position: relative;
+    background: var(--bg-elevated);
+    border: 2px dashed var(--border-strong);
+    border-radius: 12px;
+    padding: var(--space-6) var(--space-5);
+    margin-bottom: var(--space-5);
+    text-align: center;
+    transition: all 0.2s ease;
+    cursor: pointer;
+  }
+  .scan-zone:hover {
+    border-color: var(--accent);
+    background: var(--bg-elevated-2);
+    box-shadow: 0 0 20px var(--accent-glow);
+  }
+  .scan-zone input[type="file"] {
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 100%;
+    opacity: 0;
+    cursor: pointer;
+  }
+  .scan-zone .icon {
+    font-size: 32px;
+    margin-bottom: 8px;
+    display: inline-block;
+    transition: transform 0.2s ease;
+  }
+  .scan-zone:hover .icon { transform: translateY(-4px); }
+  .scan-zone .title { font-size: 14px; font-weight: 600; color: var(--text); }
+  .scan-zone .hint { margin-top: 4px; font-size: 12px; color: var(--text-muted); }
+  .scan-zone.analyzing {
+    overflow: hidden;
+    border-style: solid;
+    border-color: var(--accent);
+  }
+  .scan-zone.analyzing::after {
+    content: "";
+    position: absolute;
+    top: 0; left: -100%;
+    width: 100%; height: 100%;
+    background: linear-gradient(90deg, transparent, var(--accent-glow), transparent);
+    animation: sweep 1.5s infinite;
+  }
+  @keyframes sweep {
+    from { left: -100%; }
+    to { left: 100%; }
+  }
+
+  /* ---- Panels ---- */
+  .panel {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: var(--space-5);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  }
+  .panel h3 { margin-top: 0; font-size: 16px; margin-bottom: 16px; color: var(--text); display: flex; align-items: center; justify-content: space-between; }
+
+  /* ---- Table ---- */
+  .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  table { width: 100%; min-width: 480px; border-collapse: separate; border-spacing: 0; }
+  th, td { text-align: left; padding: 12px 14px; font-size: 13px; border-bottom: 1px solid var(--border); }
+  th { color: var(--text-muted); font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; background: var(--bg-inset); }
+  th:first-child { border-top-left-radius: 8px; }
+  th:last-child { border-top-right-radius: 8px; }
+  tbody tr {
+    cursor: pointer;
+    transition: background 0.15s ease, transform 0.15s ease;
+  }
+  tbody tr:hover { background: var(--bg-elevated-2); }
+  tbody tr.selected {
+    background: rgba(6, 182, 212, 0.08);
+  }
+  tbody tr.selected td { border-bottom-color: rgba(6, 182, 212, 0.2); }
+  td.mono { font-size: 12px; color: var(--text-muted); font-family: var(--font-mono); }
+
+  /* ---- Badges ---- */
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    font-family: var(--font-mono);
+    white-space: nowrap;
+  }
+  .badge::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
+  .badge.Safe { background: var(--safe-bg); color: var(--safe); border: 1px solid rgba(16, 185, 129, 0.2); }
+  .badge.Suspicious { background: var(--suspicious-bg); color: var(--suspicious); border: 1px solid rgba(245, 158, 11, 0.2); }
+  .badge.Malicious {
+    background: var(--malicious-bg);
+    color: var(--malicious);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    box-shadow: 0 0 10px rgba(239, 68, 68, 0.2);
+  }
+
+  /* ---- Case detail ---- */
+  .field { margin-bottom: 12px; font-size: 13px; word-break: break-word; display: flex; align-items: baseline; justify-content: space-between; border-bottom: 1px dashed var(--border); padding-bottom: 8px; }
+  .field .k { color: var(--text-muted); font-weight: 500; }
+  .field .v-mono { font-family: var(--font-mono); font-size: 12px; color: var(--text); }
+  .reasons { list-style: none; margin: 0; padding: 0; }
+  .reasons li {
+    position: relative;
+    font-size: 13px;
+    margin-bottom: 8px;
+    padding: 10px 12px 10px 32px;
+    background: var(--bg-inset);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: #CBD5E1;
+    line-height: 1.5;
+  }
+  .reasons li::before {
+    content: "⚠️";
+    position: absolute;
+    left: 10px; top: 9px;
+    font-size: 12px;
+  }
+
+  /* ---- Connected mailboxes ---- */
+  .mailbox-list { margin-bottom: var(--space-4); }
+  .mailbox-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    padding: 12px;
+    background: var(--bg-inset);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    margin-bottom: 8px;
+    flex-wrap: wrap;
+  }
+  .mailbox-info { display: flex; align-items: center; gap: 10px; min-width: 0; }
+  .provider-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .provider-dot.google { background: #EA4335; box-shadow: 0 0 6px #EA4335; }
+  .provider-dot.microsoft { background: #00A4EF; box-shadow: 0 0 6px #00A4EF; }
+  .mailbox-email { font-size: 13px; font-weight: 600; word-break: break-word; }
+  .mailbox-meta { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+  .mailbox-actions { display: flex; gap: 8px; flex-shrink: 0; }
+  .mailbox-actions button { margin: 0; padding: 6px 12px; font-size: 12px; min-height: 32px; }
+  .connect-row { display: flex; gap: 8px; flex-wrap: wrap; padding-top: var(--space-2); }
+  .connect-row button { margin: 0; flex: 1; }
+
+  /* ---- Buttons ---- */
+  button {
+    background: var(--accent);
+    color: #041219;
+    border: none;
+    padding: 10px 18px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-family: var(--font-body);
+    font-weight: 600;
+    font-size: 13px;
+    margin-right: 8px;
+    margin-top: 4px;
+    min-height: 38px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 8px var(--accent-glow);
+  }
+  button:hover {
+    background: #22D3EE;
+    box-shadow: 0 4px 12px var(--accent-glow);
+    transform: translateY(-1px);
+  }
+  button:active { transform: translateY(0); }
+  button.secondary {
+    background: var(--bg-inset);
+    color: var(--text);
+    border: 1px solid var(--border-strong);
+    box-shadow: none;
+  }
+  button.secondary:hover {
+    background: var(--bg-elevated-2);
+    border-color: var(--text-muted);
+  }
+  button:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
+
+  /* ---- Form controls ---- */
+  select, textarea, input[type="text"], input[type="password"], input[type="email"] {
+    width: 100%;
+    padding: 10px 14px;
+    border-radius: 8px;
+    border: 1px solid var(--border-strong);
+    background: var(--bg-inset);
+    color: var(--text);
+    margin-bottom: var(--space-3);
+    font-size: 13px;
+    font-family: var(--font-body);
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  }
+  select:focus, textarea:focus, input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-dim);
+    outline: none;
+  }
+  input:disabled { color: var(--text-dim); background: var(--bg-elevated); }
+  .empty { color: var(--text-muted); text-align: center; padding: 40px 20px; font-size: 13px; line-height: 1.6; }
+
+  /* ---- Auth screens ---- */
+  .auth-wrap {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-5);
+    background:
+      radial-gradient(circle at 50% 30%, rgba(6, 182, 212, 0.12), transparent 60%),
+      var(--bg);
+  }
+  .auth-card {
+    position: relative;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-strong);
+    border-radius: 16px;
+    padding: var(--space-8);
+    width: 100%;
+    max-width: 420px;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.6);
+  }
+  .auth-card::before {
+    content: "";
+    position: absolute;
+    top: 0; left: 10%; right: 10%;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  }
+  .auth-card h2 { margin: 0 0 6px; font-size: 22px; text-align: center; }
+  .auth-card .auth-sub { color: var(--text-muted); font-size: 13px; margin-bottom: var(--space-6); text-align: center; }
+  .auth-card label { display: block; font-size: 12px; font-weight: 600; color: var(--text-muted); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.05em; }
+  .error-msg { background: var(--malicious-bg); color: var(--malicious); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 8px; padding: 10px 14px; font-size: 13px; margin-bottom: var(--space-3); }
+  .info-msg { background: var(--accent-dim); color: var(--accent); border: 1px solid rgba(6, 182, 212, 0.3); border-radius: 8px; padding: 10px 14px; font-size: 13px; margin-bottom: var(--space-3); }
+  .success-msg { background: var(--safe-bg); color: var(--safe); border-radius: 6px; padding: 2px 8px; font-size: 11px; font-family: var(--font-mono); }
+  .link-btn {
+    background: none; border: none; color: var(--accent); cursor: pointer;
+    font-size: 13px; padding: 0; margin: var(--space-3) 0 0; min-height: auto; text-decoration: underline;
+    text-underline-offset: 3px; box-shadow: none;
+  }
+  .link-btn:hover { background: none; color: #22D3EE; box-shadow: none; transform: none; }
+  .otp-row { display: flex; gap: 8px; align-items: flex-end; }
+  .otp-row input { flex: 1; font-family: var(--font-mono); letter-spacing: 0.1em; text-align: center; font-size: 16px; font-weight: 600; }
+  .otp-row button { flex-shrink: 0; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .live-dot, .scan-zone.analyzing::after { animation: none; }
+  }
+
+  @media (max-width: 900px) {
+    .main { flex-direction: column; padding: 0 var(--space-5) var(--space-5); }
+    .header { padding: var(--space-4) var(--space-5); }
+    .stats-row { padding: var(--space-4) var(--space-5); }
+  }
+
+  @media (max-width: 480px) {
+    .header h1 { font-size: 18px; }
+    .stats-row { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+    .stat-card { padding: 12px; }
+    .stat-card .num { font-size: 22px; }
+    .main { padding: 0 var(--space-3) var(--space-3); gap: 12px; }
+    .panel { padding: 16px; }
+    button { width: 100%; margin-right: 0; }
+    .auth-card { padding: 24px; }
+    .otp-row { flex-direction: column; align-items: stretch; }
+  }
+
+  .v2-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; margin-top:18px; }
+  .v2-card { background: var(--bg-inset); border:1px solid var(--border); border-radius:12px; padding:16px; }
+  .v2-card h4 { margin:0 0 12px; font-size:13px; text-transform: uppercase; letter-spacing:.05em; color: var(--text-muted); }
+  .v2-summary { border-left:3px solid var(--accent); padding:12px 14px; background: var(--accent-dim); border-radius:8px; margin-top:14px; color: var(--text); line-height:1.5; font-size:13px; }
+  .driver { display:flex; gap:8px; align-items:flex-start; padding:8px 0; border-bottom:1px solid var(--border); font-size:12px; }
+  .driver:last-child { border-bottom:0; }
+  .risk-row { display:grid; grid-template-columns:100px 1fr 42px; gap:8px; align-items:center; margin:9px 0; font-size:11px; }
+  .risk-track { height:6px; background: var(--bg-elevated-2); border-radius:99px; overflow:hidden; }
+  .risk-fill { height:100%; border-radius:99px; }
+  .ioc-chip { display:inline-block; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin:3px; padding:4px 8px; border-radius:6px; background: var(--bg-elevated-2); border:1px solid var(--border); font:11px var(--font-mono); color: var(--text); }
+  .timeline { border-left:2px solid var(--border-strong); padding-left:14px; margin:8px 0 0 5px; }
+  .timeline-item { position:relative; padding:5px 0 12px; font-size:12px; }
+  .timeline-item:before { content:""; position:absolute; left:-19px; top:8px; width:8px; height:8px; border-radius:50%; background: var(--accent); box-shadow:0 0 0 3px var(--bg-inset); }
+  .timeline-item.critical:before { background: var(--malicious); } .timeline-item.warning:before { background: var(--suspicious); } .timeline-item.success:before { background: var(--safe); }
+  .graph-wrap { overflow:auto; background: var(--bg-elevated-2); border-radius:8px; border:1px solid var(--border); }
+  .graph-wrap svg { display:block; min-width:560px; }
+  .alert-item { display:flex; justify-content:space-between; gap:10px; padding:10px 0; border-bottom:1px solid var(--border); cursor:pointer; font-size:12px; }
+  .alert-item:last-child { border-bottom:0; }
+  .alert-score { font:700 12px var(--font-mono); }
+  @media (max-width: 900px) { .v2-grid { grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel">
+const { useState, useEffect, useRef } = React;
+
+// ---------------- Case detail charts (score gauge + score breakdown + auth checks) ----------------
+const verdictColor = (v) =>
+  v === "Malicious" ? "#EF4444" : v === "Suspicious" ? "#F59E0B" : "#10B981";
+
+// Draws the "NN/100 · Verdict" text in the empty middle of the half-doughnut gauge.
+const gaugeCenterTextPlugin = {
+  id: "gaugeCenterText",
+  afterDraw(chart) {
+    const { ctx, chartArea } = chart;
+    const opts = chart.config.options.plugins.gaugeCenterText;
+    if (!opts) return;
+    const cx = (chartArea.left + chartArea.right) / 2;
+    const cy = chartArea.bottom - 4;
+    ctx.save();
+    ctx.textAlign = "center";
+    ctx.fillStyle = opts.color;
+    ctx.font = "700 26px Plus Jakarta Sans, sans-serif";
+    ctx.fillText(opts.score, cx, cy - 22);
+    ctx.fillStyle = "#94A3B8";
+    ctx.font = "600 12px Plus Jakarta Sans, sans-serif";
+    ctx.fillText(opts.verdict, cx, cy);
+    ctx.restore();
+  },
+};
+Chart.register(gaugeCenterTextPlugin);
+
+// Draws a "NN/100" label just past the end of each horizontal bar.
+const barValueLabelPlugin = {
+  id: "barValueLabel",
+  afterDatasetsDraw(chart) {
+    const { ctx } = chart;
+    const meta = chart.getDatasetMeta(0);
+    ctx.save();
+    ctx.font = "600 12px JetBrains Mono, monospace";
+    ctx.fillStyle = "#F1F5F9";
+    ctx.textBaseline = "middle";
+    meta.data.forEach((bar, i) => {
+      const val = chart.data.datasets[0].data[i];
+      ctx.textAlign = "left";
+      ctx.fillText(`${val}/100`, bar.x + 8, bar.y);
+    });
+    ctx.restore();
+  },
+};
+Chart.register(barValueLabelPlugin);
+
+function CaseCharts({ selectedCase }) {
+  const gaugeCanvasRef = useRef(null);
+  const scoreCanvasRef = useRef(null);
+  const gaugeChartRef = useRef(null);
+  const scoreChartRef = useRef(null);
+
+  const ruleScore = selectedCase ? Math.round(selectedCase.rule_based_score || 0) : 0;
+  const mlScore = selectedCase ? Math.round((selectedCase.ml_phishing_probability || 0) * 100) : 0;
+  const finalScore = selectedCase ? Math.round(selectedCase.final_score || 0) : 0;
+  const verdict = selectedCase ? (selectedCase.analyst_override_verdict || selectedCase.verdict) : "Safe";
+  const color = verdictColor(verdict);
+
+  const authChecks = selectedCase ? [
+    { label: "SPF", value: selectedCase.spf_result },
+    { label: "DKIM", value: selectedCase.dkim_result },
+    { label: "DMARC", value: selectedCase.dmarc_result },
+  ] : [];
+  const authStatus = (v) => {
+    const s = (v || "").toLowerCase();
+    if (s.includes("pass")) return { label: v, color: "#10B981", bg: "rgba(16, 185, 129, 0.12)", icon: "✓" };
+    if (s.includes("fail")) return { label: v, color: "#EF4444", bg: "rgba(239, 68, 68, 0.12)", icon: "✕" };
+    return { label: v || "unknown", color: "#94A3B8", bg: "rgba(148, 163, 184, 0.12)", icon: "?" };
+  };
+
+  useEffect(() => {
+    if (!selectedCase || !gaugeCanvasRef.current || !scoreCanvasRef.current) return;
+
+    if (gaugeChartRef.current) gaugeChartRef.current.destroy();
+    gaugeChartRef.current = new Chart(gaugeCanvasRef.current, {
+      type: "doughnut",
+      data: {
+        datasets: [{
+          data: [finalScore, 100 - finalScore],
+          backgroundColor: [color, "#161C27"],
+          borderWidth: 0,
+          circumference: 180,
+          rotation: 270,
+          cutout: "75%",
+        }],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        events: [],
+        plugins: {
+          legend: { display: false },
+          tooltip: { enabled: false },
+          gaugeCenterText: { score: `${finalScore}/100`, verdict, color },
+        },
+      },
+    });
+
+    if (scoreChartRef.current) scoreChartRef.current.destroy();
+    scoreChartRef.current = new Chart(scoreCanvasRef.current, {
+      type: "bar",
+      data: {
+        labels: ["Rule score", "ML confidence"],
+        datasets: [{
+          data: [ruleScore, mlScore],
+          backgroundColor: ["#06B6D4", "#8B5CF6"],
+          borderRadius: 4,
+          maxBarThickness: 24,
+        }],
+      },
+      options: {
+        indexAxis: "y",
+        responsive: true,
+        maintainAspectRatio: false,
+        layout: { padding: { right: 48 } },
+        plugins: {
+          legend: { display: false },
+          tooltip: { callbacks: { label: c => c.parsed.x + " / 100" } },
+        },
+        scales: {
+          x: { min: 0, max: 100, ticks: { color: "#94A3B8", stepSize: 20 }, grid: { color: "rgba(255,255,255,0.05)" } },
+          y: { ticks: { color: "#F1F5F9", font: { size: 12, family: "Plus Jakarta Sans" } }, grid: { display: false } },
+        },
+      },
+    });
+
+    return () => {
+      if (gaugeChartRef.current) { gaugeChartRef.current.destroy(); gaugeChartRef.current = null; }
+      if (scoreChartRef.current) { scoreChartRef.current.destroy(); scoreChartRef.current = null; }
+    };
+  }, [selectedCase]);
+
+  if (!selectedCase) return null;
+
+  return (
+    <div style={{ marginTop: 20 }}>
+      <h3 style={{ fontSize: 14, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--text-muted)" }}>Case Analytics</h3>
+      <div style={{ display: "flex", gap: 24, flexWrap: "wrap", marginTop: 12, alignItems: "center" }}>
+        <div style={{ flex: "0 0 200px", height: 120 }}>
+          <canvas ref={gaugeCanvasRef}></canvas>
+        </div>
+        <div style={{ flex: "1 1 240px", height: 90 }}>
+          <canvas ref={scoreCanvasRef}></canvas>
+        </div>
+      </div>
+      <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 16 }}>
+        {authChecks.map(({ label, value }) => {
+          const s = authStatus(value);
+          return (
+            <div key={label} style={{
+              display: "flex", alignItems: "center", gap: 8,
+              padding: "6px 12px", borderRadius: 8,
+              background: s.bg, border: `1px solid ${s.color}33`,
+              flex: 1, minWidth: 90, justifyContent: "center"
+            }}>
+              <span style={{
+                display: "inline-flex", alignItems: "center", justifyContent: "center",
+                width: 18, height: 18, borderRadius: "50%", background: s.color,
+                color: "#07090E", fontSize: 11, fontWeight: 800,
+              }}>{s.icon}</span>
+              <span style={{ fontSize: 11, color: "var(--text-muted)", fontWeight: 600 }}>{label}</span>
+              <span style={{ fontSize: 11, fontWeight: 700, color: s.color, textTransform: "uppercase" }}>{s.label}</span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function AttackOriginMap({ mapData }) {
+  const mapRef = React.useRef(null);
+  const containerRef = React.useRef(null);
+  const layerRef = React.useRef(null);
+
+  const verdictColor = (v) => v === "Malicious" ? "#EF4444" : v === "Suspicious" ? "#F59E0B" : "#10B981";
+
+  useEffect(() => {
+    if (!containerRef.current || mapRef.current || !window.L) return;
+    const map = window.L.map(containerRef.current, {
+      worldCopyJump: true, scrollWheelZoom: false, attributionControl: true,
+    }).setView([20, 20], 2);
+    // OpenStreetMap's raw tile server enforces a strict usage policy (proper
+    // Referer, request volume, etc.) and blocks apps that don't comply — which
+    // is what caused the "Access blocked / 403" tiles. Esri's World_Dark_Gray_Base
+    // is a free, keyless tile service built for exactly this kind of embedding,
+    // and it's already dark-themed, so no CSS filter is needed either.
+    window.L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}", {
+      attribution: "&copy; Esri, HERE, Garmin, &copy; OpenStreetMap contributors",
+      maxZoom: 16, minZoom: 1,
+    }).addTo(map);
+    mapRef.current = map;
+    layerRef.current = window.L.layerGroup().addTo(map);
+    setTimeout(() => map.invalidateSize(), 200);
+  }, []);
+
+  useEffect(() => {
+    const map = mapRef.current, layer = layerRef.current;
+    if (!map || !layer || !mapData) return;
+    layer.clearLayers();
+
+    (mapData.clusters || []).forEach(c => {
+      window.L.circleMarker([c.lat, c.lon], {
+        radius: Math.min(26, 7 + c.count * 3),
+        color: c.malicious ? "#EF4444" : "#F59E0B",
+        fillColor: c.malicious ? "#EF4444" : "#F59E0B",
+        fillOpacity: 0.18, weight: 1,
+      }).addTo(layer);
+    });
+
+    const bounds = [];
+    (mapData.points || []).forEach(p => {
+      bounds.push([p.lat, p.lon]);
+      window.L.circleMarker([p.lat, p.lon], {
+        radius: 5, color: verdictColor(p.verdict), fillColor: verdictColor(p.verdict),
+        fillOpacity: 0.9, weight: 1.5,
+      }).bindPopup(
+        '<div style="font-family:system-ui;font-size:12px;line-height:1.5">' +
+        '<strong>' + p.verdict + ' \u00b7 ' + p.score + '/100</strong><br/>' +
+        (p.city || 'Unknown') + ', ' + (p.country || 'Unknown') + '<br/>' +
+        '<span style="font-family:monospace">' + (p.ip || 'no IP') + '</span><br/>' +
+        '<span style="color:#666">' + String(p.sender || '').slice(0, 40) + '</span>' +
+        '</div>'
+      ).addTo(layer);
+    });
+    if (bounds.length) map.fitBounds(bounds, { padding: [40, 40], maxZoom: 5 });
+  }, [mapData]);
+
+  const top = (mapData && mapData.top_countries) || [];
+  return (
+    <div className="panel" style={{ marginBottom: "var(--space-5)" }}>
+      <h3>🌍 Attack Origin Map
+        <span style={{ marginLeft: 10, fontSize: 11, color: "var(--text-muted)", fontWeight: 400 }}>
+          {mapData ? `${mapData.total_plotted} geolocated origins · last ${mapData.days} days` : "loading..."}
+        </span>
+      </h3>
+      <div ref={containerRef} style={{ height: 340, borderRadius: 10, overflow: "hidden", background: "#0B0E13" }} />
+      {top.length > 0 && (
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 10 }}>
+          {top.slice(0, 6).map(c => (
+            <span key={c.country} className="ioc-chip">{c.country} · {c.count}</span>
+          ))}
+        </div>
+      )}
+      {mapData && mapData.unplottable > 0 && (
+        <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 8 }}>
+          {mapData.unplottable} case(s) not plotted — originating IP could not be
+          resolved to coordinates (internal relay, stripped headers, or lookup failed).
+        </div>
+      )}
+    </div>
+  );
+}
+
+function AdvancedIntelligence({ selectedCase, advanced, analytics, onOpenCase, apiFetch }) {
+  const riskColor = (score) => score >= 60 ? "#EF4444" : score >= 30 ? "#F59E0B" : "#10B981";
+  const [evidenceVerifyResult, setEvidenceVerifyResult] = useState(null);
+  useEffect(() => { setEvidenceVerifyResult(null); }, [selectedCase && selectedCase.id]);
+  const verifyEvidence = async () => {
+    if (!selectedCase) return;
+    try {
+      const res = await apiFetch(`/cases/${selectedCase.id}/evidence-verify`);
+      const data = await res.json();
+      setEvidenceVerifyResult(data);
+    } catch (err) {
+      setEvidenceVerifyResult({ valid: false, broken_at: -1 });
+    }
+  };
+  if (!selectedCase || !advanced || !Object.keys(advanced).length) return null;
+  const graph = advanced.graph || {nodes:[], edges:[]};
+  const positions = graph.nodes.map((n, i) => {
+    const cx = 80 + (i % 4) * 140;
+    const cy = 45 + Math.floor(i / 4) * 82;
+    return {...n, x: cx, y: cy};
+  });
+  const pos = Object.fromEntries(positions.map(n => [n.id, n]));
+  return (
+    <div style={{marginTop:24}}>
+      <h3 style={{ fontSize: 14, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--text-muted)" }}>⚡ Advanced Threat Intelligence</h3>
+      <div className="v2-summary"><strong>Explainable AI Summary:</strong> {advanced.summary}</div>
+      <div className="v2-grid">
+        <div className="v2-card">
+          <h4>🔤 Why the model said this</h4>
+          {advanced.ml_explanation && advanced.ml_explanation.available ? (
+            <div>
+              <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 8 }}>
+                {advanced.ml_explanation.sentence}
+              </div>
+              {(advanced.ml_explanation.phishing_terms || []).map((t, i) => (
+                <div className="risk-row" key={i}>
+                  <span className="v-mono" style={{ color: "#EF4444" }}>{t.term}</span>
+                  <div className="risk-track">
+                    <div className="risk-fill" style={{ width: `${t.share_pct || 0}%`, background: "#EF4444" }} />
+                  </div>
+                  <span>{t.share_pct != null ? `${t.share_pct}%` : "—"}</span>
+                </div>
+              ))}
+              {(advanced.ml_explanation.safe_terms || []).length > 0 && (
+                <div style={{ marginTop: 10 }}>
+                  <div style={{ fontSize: 10, color: "var(--text-muted)", textTransform: "uppercase", fontWeight: 600 }}>
+                    Pushed toward legitimate
+                  </div>
+                  {advanced.ml_explanation.safe_terms.slice(0, 4).map((t, i) => (
+                    <span className="ioc-chip" key={i} style={{ color: "#10B981" }}>{t.term}</span>
+                  ))}
+                </div>
+              )}
+              <div style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 10 }}>
+                {advanced.language && advanced.language !== "en"
+                  ? `Language: ${advanced.language} · scored by the regional-language model`
+                  : "Percentages are each term's share of the model's phishing-side evidence."}
+              </div>
+            </div>
+          ) : (
+            <div className="empty" style={{ padding: "10px 0" }}>No term attribution available.</div>
+          )}
+        </div>
+        <div className="v2-card">
+          <h4>🧠 Risk attribution</h4>
+          {(advanced.risk_breakdown || []).map((r, i) => (
+            <div className="risk-row" key={i}>
+              <span>{r.category}</span><div className="risk-track"><div className="risk-fill" style={{width:`${r.score}%`,background:riskColor(r.score)}} /></div><span>{r.score}</span>
+            </div>
+          ))}
+        </div>
+        <div className="v2-card">
+          <h4>🚨 AI investigation drivers</h4>
+          {(advanced.key_drivers || []).length ? advanced.key_drivers.map((d,i)=><div className="driver" key={i}><span>•</span><span>{d}</span></div>) : <div className="empty" style={{padding: "10px 0"}}>No elevated drivers.</div>}
+        </div>
+        <div className="v2-card">
+          <h4>🔍 IOC extraction</h4>
+          {Object.entries(advanced.iocs || {}).map(([k, vals]) => <div key={k} style={{marginBottom:8}}><div style={{fontSize:10,color:'var(--text-muted)',textTransform:'uppercase',fontWeight:600,marginBottom:4}}>{k.replace('_',' ')}</div>{(vals||[]).slice(0,12).map((v,i)=><span className="ioc-chip" key={i} title={v}>{v}</span>)}</div>)}
+        </div>
+        <div className="v2-card">
+          <h4>🧬 Header forensics</h4>
+          <div className="field"><span className="k">From domain:</span> <span className="v-mono">{advanced.header_forensics?.from_domain || 'Unknown'}</span></div>
+          <div className="field"><span className="k">Reply-To:</span> <span className="v-mono">{advanced.header_forensics?.reply_to_domain || 'None'}</span></div>
+          <div className="field"><span className="k">Return-Path:</span> <span className="v-mono">{advanced.header_forensics?.return_path_domain || 'None'}</span></div>
+          <div className="field" style={{borderBottom:'none'}}><span className="k">Received hops:</span> <span className="v-mono">{advanced.header_forensics?.received_hops || 0}</span></div>
+          {(advanced.header_forensics?.findings || []).map((f,i)=><div className="driver" key={i}>⚠️ {f}</div>)}
+        </div>
+        <div className="v2-card">
+          <h4>🎭 Lookalike-domain check</h4>
+          {advanced.typosquat && advanced.typosquat.flagged ? (
+            <div>
+              <div className="driver"><span>⚠️</span><span>
+                Sender domain resembles <strong className="v-mono">{advanced.typosquat.matched_brand}</strong>
+              </span></div>
+              <div className="field"><span className="k">Sender label:</span> <span className="v-mono">{advanced.typosquat.sender_label}</span></div>
+              <div className="field"><span className="k">Edit distance:</span> <span className="v-mono">{advanced.typosquat.distance}</span></div>
+              <div className="field" style={{borderBottom:'none'}}><span className="k">Technique:</span> <span className="v-mono">{advanced.typosquat.technique}</span></div>
+            </div>
+          ) : (
+            <div className="empty" style={{padding: "10px 0"}}>No match against the brand watchlist.</div>
+          )}
+        </div>
+        <div className="v2-card">
+          <h4>🔒 Evidence integrity</h4>
+          {advanced.evidence_sha256 ? (
+            <div>
+              <div style={{fontSize: 11, color: "var(--text-muted)", marginBottom: 8}}>
+                SHA-256 hash of the original message bytes, computed at upload —
+                before any parsing touched them.
+              </div>
+              <div className="field" style={{flexDirection:'column', alignItems:'flex-start', gap:4}}>
+                <span className="k">SHA-256:</span>
+                <span className="v-mono" style={{wordBreak:'break-all', fontSize:11}}>{advanced.evidence_sha256}</span>
+              </div>
+              <div className="field"><span className="k">Hashed at:</span> <span className="v-mono">{advanced.evidence_hashed_at}</span></div>
+              <div className="field" style={{borderBottom:'none'}}><span className="k">Custody entries:</span> <span className="v-mono">{(advanced.evidence_chain || []).length}</span></div>
+              <button className="secondary" style={{marginTop:8, width:'100%'}} onClick={verifyEvidence}>✅ Verify custody chain</button>
+              {evidenceVerifyResult && (
+                <div style={{marginTop:8, fontSize:12, color: evidenceVerifyResult.valid ? '#10B981' : '#EF4444'}}>
+                  {evidenceVerifyResult.valid
+                    ? `Chain intact — ${evidenceVerifyResult.entries_verified} entries verified.`
+                    : `Chain broken at entry ${evidenceVerifyResult.broken_at}.`}
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="empty" style={{padding: "10px 0"}}>No evidence hash recorded for this case.</div>
+          )}
+        </div>
+        <div className="v2-card" style={{gridColumn:'1 / -1'}}>
+          <h4>🕸️ Attack relationship graph</h4>
+          <div className="graph-wrap">
+            <svg width="650" height={Math.max(180, Math.ceil(positions.length/4)*82+40)} viewBox={`0 0 650 ${Math.max(180, Math.ceil(positions.length/4)*82+40)}`}>
+              {graph.edges.map((e,i)=>{const a=pos[e.source], b=pos[e.target]; if(!a||!b)return null; return <g key={i}><line x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke="rgba(255,255,255,0.15)" strokeWidth="1.5"/><text x={(a.x+b.x)/2} y={(a.y+b.y)/2-4} fill="#94A3B8" fontSize="9" textAnchor="middle">{e.label}</text></g>})}
+              {positions.map(n=><g key={n.id}><circle cx={n.x} cy={n.y} r="24" fill={riskColor(n.risk||0)} fillOpacity=".15" stroke={riskColor(n.risk||0)} strokeWidth="1.5"/><text x={n.x} y={n.y-2} fill="#F1F5F9" fontSize="10" fontWeight="600" textAnchor="middle">{String(n.label).slice(0,15)}</text><text x={n.x} y={n.y+11} fill="#94A3B8" fontSize="8" textAnchor="middle">{n.type}</text></g>)}
+            </svg>
+          </div>
+        </div>
+        <div className="v2-card">
+          <h4>⏱️ Investigation timeline</h4>
+          <div className="timeline">{(advanced.timeline || []).map((e,i)=><div className={'timeline-item '+e.severity} key={i}><strong>{e.stage}</strong><div style={{color:'var(--text-muted)',marginTop:2}}>{e.detail}</div></div>)}</div>
+        </div>
+        <div className="v2-card">
+          <h4>🌐 URL & domain risk</h4>
+          {(advanced.url_analysis || []).length ? advanced.url_analysis.map((u,i)=><div className="driver" key={i}><span style={{color:riskColor(u.risk_score)}}>●</span><span style={{flex:1}}><span className="v-mono">{u.domain || 'unknown'}</span><br/><span style={{color:'var(--text-muted)'}}>{u.flags.length ? u.flags.join(' · ') : 'No anomalies detected'}</span></span><strong className="alert-score">{u.risk_score}</strong></div>) : <div className="empty" style={{padding: "10px 0"}}>No URLs found.</div>}
+        </div>
+      </div>
+      {analytics && analytics.alerts && analytics.alerts.length > 0 && <div className="v2-card" style={{marginTop:14}}><h4>🚨 Alert Center <span className="badge Malicious" style={{marginLeft:8}}>{analytics.alert_count} high-risk</span></h4>{analytics.alerts.map(a=><div className="alert-item" key={a.case_id} onClick={()=>onOpenCase(a.case_id)}><span><strong>Case #{a.case_id}</strong> · {a.subject || '(no subject)'}<br/><span style={{color:'var(--text-muted)'}}>{a.sender}</span></span><span className="alert-score" style={{color:riskColor(a.score)}}>{a.score}/100</span></div>)}</div>}
+    </div>
+  );
+}
+
+const API_HOST = window.location.hostname || "localhost";
+const API_PROTOCOL = window.location.protocol === "file:" ? "http:" : window.location.protocol;
+const API_BASE = `${API_PROTOCOL}//${API_HOST}:8000/api`;
+
+const TOKEN_KEY = "sentinelmail_token";
+let memoryToken = null;
+const tokenStore = {
+  get() { try { return localStorage.getItem(TOKEN_KEY); } catch (e) { return memoryToken; } },
+  set(t) { try { localStorage.setItem(TOKEN_KEY, t); } catch (e) { memoryToken = t; } },
+  clear() { try { localStorage.removeItem(TOKEN_KEY); } catch (e) {} memoryToken = null; },
+};
+
+function guessField(identifier) {
+  if (/^\S+@\S+\.\S+$/.test(identifier)) return "email";
+  if (/^\+?[0-9][0-9\s-]{6,14}$/.test(identifier)) return "mobile";
+  return "username";
+}
+
+function StatCard({ num, label, colorClass }) {
+  return (
+    <div className={"stat-card " + (colorClass || "")}>
+      <div className={"num " + (colorClass || "")}>{num}</div>
+      <div className="label">{label}</div>
+    </div>
+  );
+}
+
+// ---------------- Auth screen ----------------
+function AuthScreen({ onAuthenticated }) {
+  const [stage, setStage] = useState("identifier");
+  const [identifier, setIdentifier] = useState("");
+  const [password, setPassword] = useState("");
+  const [loginMethod, setLoginMethod] = useState("password");
+  const [signupFields, setSignupFields] = useState({ username: "", email: "", password: "" });
+  const [emailOtp, setEmailOtp] = useState("");
+  const [emailVerified, setEmailVerified] = useState(false);
+  const [loginOtpCode, setLoginOtpCode] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [info, setInfo] = useState("");
+
+  const api = async (path, body) => {
+    const res = await fetch(`${API_BASE}${path}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: body ? JSON.stringify(body) : undefined,
+    });
+    let data = {};
+    try { data = await res.json(); } catch (e) {}
+    if (!res.ok) throw new Error(data.detail || "Something went wrong");
+    return data;
+  };
+
+  const handleContinue = async () => {
+    if (!identifier.trim()) { setError("Enter your email, username, or mobile number."); return; }
+    setError(""); setBusy(true);
+    try {
+      const res = await fetch(`${API_BASE}/auth/check?identifier=${encodeURIComponent(identifier.trim())}`, { method: "POST" });
+      const data = await res.json();
+      if (data.exists) {
+        setStage("login");
+      } else {
+        const field = guessField(identifier.trim());
+        setSignupFields(f => field === "mobile" ? f : ({ ...f, [field]: identifier.trim() }));
+        setStage("signup");
+      }
+    } catch (e) {
+      setError("Couldn't reach the backend. Is it running on port 8000?");
+    }
+    setBusy(false);
+  };
+
+  const handleLogin = async () => {
+    setError(""); setBusy(true);
+    try {
+      const data = await api("/auth/login", { identifier, password });
+      if (data.requires_otp) {
+        setInfo(data.message);
+        setLoginOtpCode("");
+        setStage("loginOtp");
+      } else {
+        onAuthenticated(data.access_token);
+      }
+    } catch (e) { setError(e.message); }
+    setBusy(false);
+  };
+
+  const handleSendLoginOtp = async () => {
+    setError(""); setInfo(""); setBusy(true);
+    try {
+      await api("/auth/otp/request", { identifier, channel: "email", purpose: "login" });
+      setInfo("Code sent to your email.");
+      setStage("loginOtp");
+    } catch (e) { setError(e.message); }
+    setBusy(false);
+  };
+
+  const handleVerifyLoginOtp = async () => {
+    setError(""); setBusy(true);
+    try {
+      const data = await api("/auth/otp/verify", { identifier, code: loginOtpCode, purpose: "login", channel: "email" });
+      onAuthenticated(data.access_token);
+    } catch (e) { setError(e.message); }
+    setBusy(false);
+  };
+
+  const handleSignup = async () => {
+    const { username, email, password } = signupFields;
+    if (!username || !email || !password) { setError("All fields are required."); return; }
+    setError(""); setBusy(true);
+    try {
+      await api("/auth/signup", { username, email, password });
+      setInfo("Account created. Enter the code sent to your email below.");
+      setStage("otp");
+    } catch (e) { setError(e.message); }
+    setBusy(false);
+  };
+
+  const verifyChannel = async (channel, code) => {
+    setError(""); setBusy(true);
+    try {
+      const identifierForChannel = signupFields.email;
+      const data = await api("/auth/otp/verify", { identifier: identifierForChannel, code, purpose: "signup", channel });
+      if (channel === "email") setEmailVerified(true);
+      if (data.fully_verified) {
+        onAuthenticated(data.access_token);
+      } else {
+        setInfo(data.message || "Verified.");
+      }
+    } catch (e) { setError(e.message); }
+    setBusy(false);
+  };
+
+  const resendOtp = async (channel) => {
+    setError(""); setInfo(""); setBusy(true);
+    try {
+      const identifierForChannel = signupFields.email;
+      await api("/auth/otp/request", { identifier: identifierForChannel, channel, purpose: "signup" });
+      setInfo(`Code resent via ${channel}.`);
+    } catch (e) { setError(e.message); }
+    setBusy(false);
+  };
+
+  return (
+    <div className="auth-wrap">
+      <div className="auth-card">
+        <h2>🛡️ SentinelMail AI</h2>
+        <div className="auth-sub">Analyst Security Dashboard</div>
+
+        {error && <div className="error-msg">{error}</div>}
+        {info && !error && <div className="info-msg">{info}</div>}
+
+        {stage === "identifier" && (
+          <div>
+            <label>Email, Username, or Mobile</label>
+            <input type="text" value={identifier} onChange={e => setIdentifier(e.target.value)}
+              onKeyDown={e => e.key === "Enter" && handleContinue()} placeholder="analyst@sentinelmail.ai" />
+            <button onClick={handleContinue} disabled={busy} style={{width: "100%"}}>
+              {busy ? "Checking..." : "Continue"}
+            </button>
+          </div>
+        )}
+
+        {stage === "login" && (
+          <div>
+            <label>Signed in as</label>
+            <input type="text" value={identifier} disabled />
+
+            <div style={{display: "flex", gap: 6, marginTop: 12, marginBottom: 12}}>
+              <button
+                type="button"
+                className={loginMethod === "password" ? "" : "secondary"}
+                style={{flex: 1, fontSize: 12, padding: "8px 10px", minHeight: 34}}
+                onClick={() => { setLoginMethod("password"); setError(""); setInfo(""); }}
+              >
+                Password
+              </button>
+              <button
+                type="button"
+                className={loginMethod === "otp" ? "" : "secondary"}
+                style={{flex: 1, fontSize: 12, padding: "8px 10px", minHeight: 34}}
+                onClick={() => { setLoginMethod("otp"); setError(""); setInfo(""); }}
+              >
+                Email OTP
+              </button>
+            </div>
+
+            {loginMethod === "password" ? (
+              <div>
+                <label>Password</label>
+                <input type="password" value={password} onChange={e => setPassword(e.target.value)}
+                  onKeyDown={e => e.key === "Enter" && handleLogin()} placeholder="••••••••" />
+                <button onClick={handleLogin} disabled={busy} style={{width: "100%"}}>
+                  {busy ? "Verifying..." : "Sign In"}
+                </button>
+              </div>
+            ) : (
+              <div>
+                <div className="auth-sub" style={{marginTop: 8, marginBottom: 12, textAlign: "left"}}>
+                  We'll send a high-security one-time verification code directly to your email.
+                </div>
+                <button onClick={handleSendLoginOtp} disabled={busy} style={{width: "100%"}}>
+                  {busy ? "Sending code..." : "Send Verification Code"}
+                </button>
+              </div>
+            )}
+
+            <div style={{display:"flex", justifyContent:"space-between", alignItems:"center", marginTop: 16}}>
+              <button className="link-btn" onClick={() => { setStage("identifier"); setError(""); setInfo(""); setLoginMethod("password"); }}>← Back</button>
+              <button className="link-btn"
+                onClick={() => { setSignupFields(f => ({ ...f, email: /^\S+@\S+\.\S+$/.test(identifier) ? identifier : "" })); setStage("signup"); setError(""); setInfo(""); }}>
+                Create account
+              </button>
+            </div>
+          </div>
+        )}
+
+        {stage === "loginOtp" && (
+          <div>
+            <label>Signed in as</label>
+            <input type="text" value={identifier} disabled />
+            <div className="auth-sub" style={{marginBottom: 12, textAlign: "left"}}>Enter the 6-digit code sent to your inbox.</div>
+            <label>One-time code</label>
+            <div className="otp-row">
+              <input type="text" value={loginOtpCode} onChange={e => setLoginOtpCode(e.target.value)}
+                onKeyDown={e => e.key === "Enter" && handleVerifyLoginOtp()} placeholder="123456" maxLength="6" />
+              <button onClick={handleVerifyLoginOtp} disabled={busy}>Verify</button>
+            </div>
+            <div style={{display:"flex", justifyContent:"space-between", marginTop: 12}}>
+              <button className="link-btn" onClick={handleSendLoginOtp} disabled={busy}>Resend code</button>
+              <button className="link-btn" onClick={() => { setStage("login"); setError(""); setInfo(""); }}>Back to options</button>
+            </div>
+          </div>
+        )}
+
+        {stage === "signup" && (
+          <div>
+            <div className="auth-sub" style={{marginBottom: 12, textAlign: "left"}}>Create a new analyst credentials profile.</div>
+            <label>Username</label>
+            <input type="text" value={signupFields.username} onChange={e => setSignupFields(f => ({...f, username: e.target.value}))} />
+            <label>Email</label>
+            <input type="email" value={signupFields.email} onChange={e => setSignupFields(f => ({...f, email: e.target.value}))} />
+            <label>Password</label>
+            <input type="password" value={signupFields.password} onChange={e => setSignupFields(f => ({...f, password: e.target.value}))}
+              onKeyDown={e => e.key === "Enter" && handleSignup()} />
+            <button onClick={handleSignup} disabled={busy} style={{width: "100%"}}>
+              {busy ? "Creating profile..." : "Create Profile"}
+            </button>
+            <div style={{display:"flex", justifyContent:"space-between", marginTop: 16}}>
+              <button className="link-btn" onClick={() => { setStage("identifier"); setError(""); setInfo(""); }}>← Back</button>
+              <button className="link-btn" onClick={() => { setIdentifier(signupFields.email || signupFields.username); setStage("login"); setError(""); setInfo(""); }}>Log in instead</button>
+            </div>
+          </div>
+        )}
+
+        {stage === "otp" && (
+          <div>
+            <div className="auth-sub" style={{marginBottom: 12, textAlign: "left"}}>
+              Verify your email address to complete registration.
+            </div>
+            <label>Email code {emailVerified && <span className="success-msg" style={{marginLeft: 6}}>verified</span>}</label>
+            {!emailVerified && (
+              <div className="otp-row">
+                <input type="text" value={emailOtp} onChange={e => setEmailOtp(e.target.value)}
+                  onKeyDown={e => e.key === "Enter" && verifyChannel("email", emailOtp)} placeholder="123456" maxLength="6" />
+                <button onClick={() => verifyChannel("email", emailOtp)} disabled={busy}>Verify</button>
+              </div>
+            )}
+            {!emailVerified && <button className="link-btn" onClick={() => resendOtp("email")} disabled={busy}>Resend email code</button>}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ---------------- Main dashboard ----------------
+function Dashboard({ token, currentUser, onLogout }) {
+  const [stats, setStats] = useState({});
+  const [analytics, setAnalytics] = useState({});
+  const [mapData, setMapData] = useState(null);
+  const [advanced, setAdvanced] = useState({});
+  const [cases, setCases] = useState([]);
+  const [selectedCase, setSelectedCase] = useState(null);
+  const [uploading, setUploading] = useState(false);
+  const [overrideVerdict, setOverrideVerdict] = useState("");
+  const [notes, setNotes] = useState("");
+  const [mailboxes, setMailboxes] = useState([]);
+  const [connecting, setConnecting] = useState(null);
+  const [syncingId, setSyncingId] = useState(null);
+
+  const apiFetch = async (path, options = {}) => {
+    const headers = Object.assign({}, options.headers, { Authorization: `Bearer ${token}` });
+    const res = await fetch(`${API_BASE}${path}`, { ...options, headers });
+    if (res.status === 401) {
+      onLogout();
+      throw new Error("Session expired — please log in again.");
+    }
+    return res;
+  };
+
+  const refresh = () => {
+    apiFetch("/dashboard/stats").then(r => r.json()).then(setStats).catch(() => {});
+    apiFetch("/cases").then(r => r.json()).then(setCases).catch(() => {});
+    apiFetch("/dashboard/analytics?days=14").then(r => r.json()).then(setAnalytics).catch(() => {});
+    apiFetch("/dashboard/attack-map?days=30").then(r => r.json()).then(setMapData).catch(() => {});
+  };
+
+  const refreshMailboxes = () => {
+    apiFetch("/mailbox/list").then(r => r.json()).then(setMailboxes).catch(() => {});
+  };
+
+  useEffect(() => { refresh(); refreshMailboxes(); }, []);
+
+  useEffect(() => {
+    const onMessage = (event) => {
+      if (!event.data || event.data.type !== "sentinelmail-oauth") return;
+      setConnecting(null);
+      refreshMailboxes();
+      if (event.data.status === "success") {
+        setTimeout(refresh, 4000);
+      } else if (event.data.message) {
+        alert("Mailbox connection failed: " + event.data.message);
+      }
+    };
+    window.addEventListener("message", onMessage);
+    return () => window.removeEventListener("message", onMessage);
+  }, []);
+
+  const connectMailbox = async (provider) => {
+    setConnecting(provider);
+    try {
+      const res = await apiFetch(`/mailbox/connect/${provider}`, { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) { alert(data.detail || "Couldn't start the connection."); setConnecting(null); return; }
+      const popup = window.open(data.auth_url, "sentinelmail-oauth", "width=520,height=650");
+      if (!popup) { alert("Your browser blocked the popup — allow popups for this site and try again."); setConnecting(null); }
+    } catch (err) {
+      setConnecting(null);
+    }
+  };
+
+  const disconnectMailbox = async (id) => {
+    if (!confirm("Disconnect this mailbox? It will stop syncing new cases automatically.")) return;
+    try {
+      await apiFetch(`/mailbox/${id}`, { method: "DELETE" });
+      refreshMailboxes();
+    } catch (err) {}
+  };
+
+  const syncMailboxNow = async (id) => {
+    setSyncingId(id);
+    try {
+      const res = await apiFetch(`/mailbox/${id}/sync`, { method: "POST" });
+      const data = await res.json();
+      if (res.ok) { refresh(); refreshMailboxes(); }
+      else alert(data.detail || "Sync failed.");
+    } catch (err) {}
+    setSyncingId(null);
+  };
+
+  const handleUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setUploading(true);
+    const formData = new FormData();
+    formData.append("file", file);
+    try {
+      await apiFetch("/analyze", { method: "POST", body: formData });
+      refresh();
+    } catch (err) {
+      alert("Upload failed: " + err.message + "\n(Is the FastAPI backend running on port 8000?)");
+    }
+    setUploading(false);
+  };
+
+  const openCase = (c) => {
+    apiFetch(`/cases/${c.id}`).then(r => r.json()).then(full => {
+      setSelectedCase(full);
+      setOverrideVerdict(full.analyst_override_verdict || full.verdict);
+      setNotes(full.analyst_notes || "");
+      apiFetch(`/cases/${c.id}/advanced`).then(r => r.json()).then(setAdvanced).catch(() => setAdvanced({}));
+    }).catch(() => {});
+  };
+
+  const submitOverride = async () => {
+    try {
+      await apiFetch(`/cases/${selectedCase.id}/override`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ verdict: overrideVerdict, notes }),
+      });
+      refresh();
+      openCase(selectedCase);
+    } catch (err) {}
+  };
+
+  const downloadIncidentReport = async () => {
+    try {
+      const res = await apiFetch(`/cases/${selectedCase.id}/incident-report`);
+      if (!res.ok) { alert("Failed to generate the incident report."); return; }
+      const blob = await res.blob();
+      window.open(URL.createObjectURL(blob), "_blank");
+    } catch (err) {}
+  };
+
+  const downloadReport = async () => {
+    try {
+      const res = await apiFetch(`/cases/${selectedCase.id}/report`);
+      if (!res.ok) { alert("Failed to generate report."); return; }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      window.open(url, "_blank");
+    } catch (err) {}
+  };
+
+  return (
+    <div>
+      <div className="header">
+        <div>
+          <h1>🛡️ SentinelMail AI</h1>
+          <div className="tag">
+            <span className="tag-id mono">SIH26106</span>
+            Email Threat Detection, GeoLocation & Forensic Intelligence Platform
+          </div>
+        </div>
+        <div className="who">
+          <span className="live-badge"><span className="live-dot"></span>SYSTEM LIVE</span>
+          <span>{currentUser && currentUser.email}{currentUser && currentUser.role ? ` (${currentUser.role})` : ""}</span>
+          <button className="secondary" onClick={onLogout}>Log out</button>
+        </div>
+      </div>
+
+      <div className="stats-row">
+        <StatCard num={stats.total_cases || 0} label="Total Cases" colorClass="total" />
+        <StatCard num={stats.malicious || 0} label="Malicious" colorClass="malicious" />
+        <StatCard num={stats.suspicious || 0} label="Suspicious" colorClass="suspicious" />
+        <StatCard num={stats.safe || 0} label="Safe" colorClass="safe" />
+        <StatCard num={stats.pending_review || 0} label="Pending Review" />
+      </div>
+
+      <AttackOriginMap mapData={mapData} />
+
+      <div className="main">
+        <div className="cases-panel">
+          <div className="panel" style={{marginBottom: "var(--space-5)"}}>
+            <h3>Connected Mailboxes</h3>
+            {mailboxes.length === 0 ? (
+              <div className="empty" style={{padding: "16px 0"}}>No inbox connected yet — link Gmail or Outlook to auto-sync threats.</div>
+            ) : (
+              <div className="mailbox-list">
+                {mailboxes.map(m => (
+                  <div key={m.id} className="mailbox-row">
+                    <div className="mailbox-info">
+                      <span className={"provider-dot " + m.provider}></span>
+                      <div>
+                        <div className="mailbox-email">{m.email_address}</div>
+                        <div className="mailbox-meta">
+                          {m.status === "error"
+                            ? <span className="malicious">Sync error — {m.last_error}</span>
+                            : m.last_synced_at
+                              ? <span className="mono">Last synced {new Date(m.last_synced_at).toLocaleString()}</span>
+                              : "Not synced yet"}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="mailbox-actions">
+                      <button className="secondary" onClick={() => syncMailboxNow(m.id)} disabled={syncingId === m.id}>
+                        {syncingId === m.id ? "Syncing..." : "Sync now"}
+                      </button>
+                      <button className="secondary" onClick={() => disconnectMailbox(m.id)}>Disconnect</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+            <div className="connect-row">
+              <button className="secondary" onClick={() => connectMailbox("google")} disabled={connecting !== null}>
+                {connecting === "google" ? "Connecting..." : "+ Connect Gmail"}
+              </button>
+              <button className="secondary" onClick={() => connectMailbox("microsoft")} disabled={connecting !== null}>
+                {connecting === "microsoft" ? "Connecting..." : "+ Connect Outlook"}
+              </button>
+            </div>
+          </div>
+
+          <div className={"scan-zone" + (uploading ? " analyzing" : "")}>
+            <input type="file" accept=".eml" onChange={handleUpload} disabled={uploading} />
+            <div className="icon">📂</div>
+            <div className="title">Drop email file to scan (.eml)</div>
+            <div className="hint">
+              {uploading ? "Scanning message for threat indicators..." : "or click to select file from your computer"}
+            </div>
+          </div>
+
+          <div className="panel">
+            <h3>Case History</h3>
+            {cases.length === 0 ? (
+              <div className="empty">No cases found — upload an email above to execute pipeline.</div>
+            ) : (
+              <div className="table-scroll">
+                <table>
+                  <thead>
+                    <tr><th>Subject</th><th>Sender</th><th>Verdict</th><th>Score</th></tr>
+                  </thead>
+                  <tbody>
+                    {cases.map(c => (
+                      <tr
+                        key={c.id}
+                        onClick={() => openCase(c)}
+                        className={selectedCase && selectedCase.id === c.id ? "selected" : ""}
+                      >
+                        <td style={{fontWeight: 600}}>{c.subject}</td>
+                        <td style={{color: "var(--text-muted)"}}>{c.sender}</td>
+                        <td><span className={"badge " + (c.analyst_override_verdict || c.verdict)}>
+                          {c.analyst_override_verdict || c.verdict}
+                          {c.analyst_override_verdict ? " *" : ""}
+                        </span></td>
+                        <td className="mono">{c.final_score}/100</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="detail-panel">
+          <div className="panel">
+            <h3>Case Detail Intelligence</h3>
+            {!selectedCase ? (
+              <div className="empty">Select a case from history to view full forensic telemetry and export reports.</div>
+            ) : (
+              <div>
+                <div className="field"><span className="k">Subject</span> <span style={{fontWeight:600}}>{selectedCase.subject}</span></div>
+                <div className="field"><span className="k">From</span> <span className="v-mono">{selectedCase.sender}</span></div>
+                <div className="field"><span className="k">Sender IP</span> <span className="v-mono">{selectedCase.originating_ip || "Not determined"}</span></div>
+                <div className="field"><span className="k">Origin Location</span> <span>{selectedCase.geo_city || "Unknown"}, {selectedCase.geo_country || ""}</span></div>
+                <div className="field"><span className="k">Authentication Check</span> <span className="v-mono">{selectedCase.spf_result} / {selectedCase.dkim_result} / {selectedCase.dmarc_result}</span></div>
+                <div className="field"><span className="k">ML Phishing Confidence</span> <span className="v-mono">{(selectedCase.ml_phishing_probability * 100).toFixed(1)}%</span></div>
+                <div className="field" style={{borderBottom:'none'}}><span className="k">System Verdict</span> <div><span className={"badge " + selectedCase.verdict}>{selectedCase.verdict}</span> <span className="v-mono">({selectedCase.final_score}/100)</span></div></div>
+
+                <CaseCharts selectedCase={selectedCase} />
+                <AdvancedIntelligence selectedCase={selectedCase} advanced={advanced} analytics={analytics} apiFetch={apiFetch} onOpenCase={(id) => { const c = cases.find(x => x.id === id); if (c) openCase(c); }} />
+
+                <h3 style={{marginTop:24, fontSize: 14, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--text-muted)"}}>Evidence Indicators</h3>
+                <ul className="reasons">
+                  {selectedCase.reasons.map((r, i) => <li key={i}>{r}</li>)}
+                </ul>
+
+                <h3 style={{marginTop:24, fontSize: 14, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--text-muted)"}}>Analyst Review & Verdict Override</h3>
+                <select value={overrideVerdict} onChange={e => setOverrideVerdict(e.target.value)}>
+                  <option>Safe</option>
+                  <option>Suspicious</option>
+                  <option>Malicious</option>
+                </select>
+                <textarea rows="3" placeholder="Analyst notes and observations..." value={notes} onChange={e => setNotes(e.target.value)} />
+                <div style={{display:"flex", gap: 8, marginTop: 8}}>
+                  <button onClick={submitOverride} style={{flex: 1}}>Save Override</button>
+                  <button className="secondary" onClick={downloadReport} style={{flex: 1}}>📄 Export PDF Report</button>
+                  <button className="secondary" onClick={downloadIncidentReport} style={{flex: 1}}>🏛️ CERT-In Report</button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---------------- Root ----------------
+function App() {
+  const [token, setToken] = useState(tokenStore.get());
+  const [currentUser, setCurrentUser] = useState(null);
+  const [checkingSession, setCheckingSession] = useState(!!tokenStore.get());
+
+  useEffect(() => {
+    if (!token) { setCheckingSession(false); return; }
+    fetch(`${API_BASE}/auth/me`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => { if (!r.ok) throw new Error("invalid session"); return r.json(); })
+      .then(me => { setCurrentUser(me); setCheckingSession(false); })
+      .catch(() => { tokenStore.clear(); setToken(null); setCheckingSession(false); });
+  }, [token]);
+
+  const handleAuthenticated = (newToken) => {
+    tokenStore.set(newToken);
+    setToken(newToken);
+  };
+
+  const handleLogout = () => {
+    tokenStore.clear();
+    setToken(null);
+    setCurrentUser(null);
+  };
+
+  if (checkingSession) {
+    return <div className="auth-wrap"><div style={{color: "var(--text-muted)", fontFamily: "var(--font-mono)", fontSize: 13}}>Authenticating session...</div></div>;
+  }
+
+  if (!token) {
+    return <AuthScreen onAuthenticated={handleAuthenticated} />;
+  }
+
+  return <Dashboard token={token} currentUser={currentUser} onLogout={handleLogout} />;
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+</body>
+</html>
